@@ -3,13 +3,13 @@ import numpy as np # type: ignore
 import cv2
 import os.path
 
-class _VideoBase():
+class IOBase():
     @staticmethod
     def view_frame(frame: np.ndarray):
         cv2.imshow('frame',frame) # type: ignore
         cv2.waitKey(0)            # type: ignore
 
-class VideoReader(_VideoBase):
+class VideoReader(IOBase):
     def __init__(self, video_path:str) -> None:
         super().__init__()
         self.path = video_path
@@ -55,7 +55,7 @@ class VideoReader(_VideoBase):
         fps = self.get_fps()
         return f"[Reader] {os.path.split(self.path)[-1]}: {w}x{h}@{fps:.2f}\tframe {self.get_pos()}/{len(self)}"
 
-class VideoWriter(_VideoBase):
+class VideoWriter(IOBase):
     def __init__(self, output_name:str, resolution:Tuple[int, int]=(640, 480), fps:float = 29.97, like_video:Optional[VideoReader]=None) -> None:
         super().__init__()
         self.initialized = False
