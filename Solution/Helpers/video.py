@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, Any
-import numpy as np
+import numpy as np # type: ignore
 import cv2
 import os.path
 
