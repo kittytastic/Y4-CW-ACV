@@ -45,6 +45,7 @@ class ImageDirReader(IOBase):
         self.eligable_files = eligable_files 
 
     def __iter__(self):
+        self.counter=0
         return self
 
     def __next__(self)->np.ndarray:
