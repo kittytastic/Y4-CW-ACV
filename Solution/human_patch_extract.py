@@ -5,6 +5,7 @@ import torchvision
 from Helpers.video import VideoReader
 from Helpers.video_loader import VideoLoader
 from Helpers.image_dir import ImageDirWriter
+from Helpers.torch import init_torch
 from tqdm import tqdm
 import argparse
 import os.path
@@ -67,15 +68,6 @@ class MaskRCNN():
 
         return people
 
-
-def init_torch()->torch.device:
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    if torch.cuda.device_count()>0:
-        print(f"Using: {torch.cuda.get_device_name(0)}")
-    else:
-        print(f"Using: {device}")
-    
-    return device
 
 
 def full_mode(workers:int, batch_size: int):
