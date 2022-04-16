@@ -34,7 +34,7 @@ class VideoSubsectionReader(VideoReader):
         next_frame = super().__next__()
         col_correct = cv2.cvtColor(next_frame, cv2.COLOR_BGR2RGB)
         tensor_correct = self.tf(col_correct)
-        return tensor_correct 
+        return tensor_correct, next_frame 
 
 class VideoLoader(torch.utils.data.IterableDataset):
     def __init__(self, video_path:str):

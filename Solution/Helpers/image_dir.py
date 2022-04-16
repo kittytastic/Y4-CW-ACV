@@ -4,6 +4,7 @@ import os
 import cv2
 import numpy as np
 import random
+import concurrent.futures
 
 class ImageDirWriter(IOBase):
     def __init__(self, dir_path: str, prefix:str = "output", file_type:str="png"):
@@ -13,6 +14,11 @@ class ImageDirWriter(IOBase):
         self.prefix = prefix
         self.file_type = file_type
         self.counter = 0
+
+    def write_frames(self, frames):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for f in frames:
+                executor.submit(self.write_frame, frame=f)
     
     def write_frame(self, frame):
         file_name =  f"{self.prefix}-{self.counter}.{self.file_type}"

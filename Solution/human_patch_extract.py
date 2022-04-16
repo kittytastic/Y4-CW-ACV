@@ -47,16 +47,12 @@ class MaskRCNN():
             frame_results.append((scores, masks, boxes, labels))
         return frame_results
     
-    def get_humans(self, frames:Any):
-        frame_results = self.process_frames(frames)
+    def get_humans(self, frames_tensor:Any, frames_opencv):
+        frame_results = self.process_frames(frames_tensor)
         people:List[np.ndarray] = []
         
         for idx, (scores, masks, boxes, labels) in enumerate(frame_results):
-            frame = tensor_to_openCV(frames[idx].detach().cpu())
-            
-            # Get the image 
-            out_frame = frame.copy()
-            out_frame = np.array(out_frame)
+            frame = frames_opencv[idx].numpy()
 
             # Draw the segmentation masks with the text labels
             for i in range(len(masks)): # For all detected objects with score > threshold
@@ -64,22 +60,9 @@ class MaskRCNN():
                     #print(f"Skipping: {labels[i]}")
                     continue
                 x1, y1, x2, y2 = int(boxes[i][0][0]), int(boxes[i][0][1]), int(boxes[i][1][0]), int(boxes[i][1][1])
-                #print(f"{labels[i]} : {float(scores[i])} ({x1}, {y1}, {x2}, {y2})")
-                color = self.COLORS[random.randrange(0, len(self.COLORS))] # Pick a random color
-                red_map = np.zeros_like(masks[i]).astype(np.uint8) # Initialize an empty mask for each of the RGB channels
-                green_map = np.zeros_like(masks[i]).astype(np.uint8)
-                blue_map = np.zeros_like(masks[i]).astype(np.uint8)
-                red_map[masks[i] == 1], green_map[masks[i] == 1], blue_map[masks[i] == 1] = color # Set the color of the masked pixels
-                segmentation_map = np.stack([red_map, green_map, blue_map], axis=2) # Combine the three channels of the mask
-                cv2.addWeighted(out_frame, 1.0, segmentation_map, 0.6, 0.0, out_frame) # Apply the mask onto the image
-                cv2.rectangle(out_frame, (int(boxes[i][0][0]),int(boxes[i][0][1])), (int(boxes[i][1][0]),int(boxes[i][1][1])), color, 2) # Draw the bounding boxes
-                cv2.putText(out_frame , labels[i], (int(boxes[i][0][0]), int(boxes[i][0][1])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA) # Draw the class label as text
-
                 person = frame[y1:y2, x1:x2]
                 people.append(person)
 
-        # Save the image
-        #cv2.imwrite("./output.png", out_frame)
         return people
 
 
@@ -100,9 +83,9 @@ if __name__=="__main__":
     video = VideoReader("../Dataset/Train/Games/Video1.mp4")
     outstream = ImageDirWriter("../Dataset/Generated/HumanPatches")
     ds = VideoLoader('../Dataset/Train/Games/Video1.mp4')
-    data = torch.utils.data.DataLoader(ds, num_workers=2, batch_size=batch_size)
+    data = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=batch_size)
     
-    for frames  in tqdm(data, total = len(video)//batch_size):
-        people = mask_rcnn.get_humans(frames)
-        for p in people:
-            outstream.write_frame(p)
+
+    for tensor, opencv  in tqdm(data, total = len(video)//batch_size):
+        people = mask_rcnn.get_humans(tensor, opencv)
+        outstream.write_frames(people)
