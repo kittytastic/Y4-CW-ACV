@@ -37,8 +37,7 @@ def full_mode(workers:int, batch_size: int, model:Any):
     
 
     DATA_BASE_PATH = "../Dataset/Train"
-    #game_videos = ["Video1.mp4", "Video2.mp4"]
-    game_videos = []
+    game_videos = ["Video1.mp4", "Video2.mp4"]
     movie_videos = ["Video1.mp4", "Video2.mp4", "Video3.mp4", "Video4.mp4", "Video5.mp4", "Video6.mp4", "Video7.mp4", "Video8.mp4", "Video9.mp4"]
 
 
