@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List
 import cv2
 import numpy as np
 import random
@@ -8,6 +8,8 @@ from PIL import Image
 from IPython import display
 from torchvision.transforms import transforms
 from Helpers.video import VideoReader
+from Helpers.image_dir import ImageDirWriter
+from tqdm import tqdm
 
 # Adapted from: https://colab.research.google.com/drive/1bWLB3tmWv4XyJSu4DHtZ0-b-n-DACSKx?usp=sharing
 class MaskRCNN():
@@ -53,11 +55,12 @@ class MaskRCNN():
         # Get the image 
         out_frame = frame.copy()
         out_frame = np.array(out_frame)
+        people:List[np.ndarray] = []
 
         # Draw the segmentation masks with the text labels
         for i in range(len(masks)): # For all detected objects with score > threshold
             x1, y1, x2, y2 = int(boxes[i][0][0]), int(boxes[i][0][1]), int(boxes[i][1][0]), int(boxes[i][1][1])
-            print(f"{labels[i]} : {float(scores[i])} ({x1}, {y1}, {x2}, {y2})")
+            #print(f"{labels[i]} : {float(scores[i])} ({x1}, {y1}, {x2}, {y2})")
             color = self.COLORS[random.randrange(0, len(self.COLORS))] # Pick a random color
             red_map = np.zeros_like(masks[i]).astype(np.uint8) # Initialize an empty mask for each of the RGB channels
             green_map = np.zeros_like(masks[i]).astype(np.uint8)
@@ -69,10 +72,11 @@ class MaskRCNN():
             cv2.putText(out_frame , labels[i], (int(boxes[i][0][0]), int(boxes[i][0][1])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA) # Draw the class label as text
 
             person = frame[y1:y2, x1:x2]
-            cv2.imwrite(f"./person{i}.png", person)
+            people.append(person)
 
         # Save the image
-        cv2.imwrite("./output.png", out_frame)
+        #cv2.imwrite("./output.png", out_frame)
+        return people
 
 
 def init_torch()->torch.device:
@@ -89,5 +93,8 @@ if __name__=="__main__":
     device = init_torch()
     mask_rcnn = MaskRCNN(device)
     video = VideoReader("../Dataset/Train/Games/Video1.mp4")
-    frame = next(video)
-    mask_rcnn.get_humans(frame)
+    outstream = ImageDirWriter("../Dataset/Generated/HumanPatches")
+    for frame  in tqdm(video):
+        people = mask_rcnn.get_humans(frame)
+        for p in people:
+            outstream.write_frame(p)

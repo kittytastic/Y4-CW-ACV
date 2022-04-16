@@ -1,5 +1,5 @@
 from typing import List, Optional, Tuple
-from video import IOBase, VideoReader
+from .video import IOBase, VideoReader
 import os
 import cv2
 import numpy as np
