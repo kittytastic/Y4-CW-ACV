@@ -9,6 +9,7 @@ from tqdm import tqdm
 import argparse
 import os.path
 from Models.maskrcnn import MaskRCNN
+from Models.keypointrcnn import KeyPointRCNN
 
     
 def get_humans(model, frames_tensor:Any, frames_opencv:Any):
@@ -32,12 +33,12 @@ def get_humans(model, frames_tensor:Any, frames_opencv:Any):
 
 
 
-def full_mode(workers:int, batch_size: int):
-    device = init_torch()
-    model = MaskRCNN(device)
+def full_mode(workers:int, batch_size: int, model:Any):
+    
 
     DATA_BASE_PATH = "../Dataset/Train"
-    game_videos = ["Video1.mp4", "Video2.mp4"]
+    #game_videos = ["Video1.mp4", "Video2.mp4"]
+    game_videos = []
     movie_videos = ["Video1.mp4", "Video2.mp4", "Video3.mp4", "Video4.mp4", "Video5.mp4", "Video6.mp4", "Video7.mp4", "Video8.mp4", "Video9.mp4"]
 
 
@@ -86,16 +87,27 @@ if __name__=="__main__":
     print("------ Human Patch Extract ------")
     
     parser = argparse.ArgumentParser(description='Extract Human Patches')
-    parser.add_argument('-b', '--batch', type=int,help='Batch Size', default=16)
+    parser.add_argument('-b', '--batch', type=int,help='Batch Size', default=12)
     parser.add_argument('-w', '--workers', type=int, help='Number of Workers', default=2)
     parser.add_argument('-m', '--mode', type=str, help='Operation Mode', default="full")
+    parser.add_argument('-n', '--network', type=str, help='Network', default="kp")
     args = parser.parse_args()
 
     batch_size = args.batch
     workers = args.workers
+    
+    device = init_torch()
+    if args.network == "mask":
+        model = MaskRCNN(device)
+    elif args.network == "kp":
+        model = KeyPointRCNN(device)
+    else:
+        print(f"Unknown network: {args.network}")
+        exit()
 
+    
     if args.mode == "full":
-        full_mode(workers, batch_size)
+        full_mode(workers, batch_size, model)
     else:
         print(f"Unknown mode: {args.mode}")
     

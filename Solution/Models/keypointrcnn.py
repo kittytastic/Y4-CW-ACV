@@ -43,8 +43,8 @@ class KeyPointRCNN():
         with torch.no_grad():
             outputs = self.model(frames_tensor)
 
-        for k,v in outputs[0].items():
-            print(f"{k}:  {v.shape}")
+        #for k,v in outputs[0].items():
+        #    print(f"{k}:  {v.shape}")
 
         frame_results = []
         for i in range(len(frames)):
