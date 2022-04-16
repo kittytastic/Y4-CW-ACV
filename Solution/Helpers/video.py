@@ -1,13 +1,35 @@
-from typing import Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any
 import numpy as np # type: ignore
 import cv2
 import os.path
+from torch import zeros
+from torchvision.transforms import transforms
 
 class IOBase():
     @staticmethod
     def view_frame(frame: np.ndarray):
         cv2.imshow('frame',frame) # type: ignore
         cv2.waitKey(0)            # type: ignore
+
+class VideoBatchIter():
+    def __init__(self, parent: 'VideoReader', batch_size: int) -> None:
+        self.parent = parent
+        self.batch_size = batch_size
+
+    def __next__(self):
+        frames:List[np.ndarray] = []
+        for i in range(self.batch_size):
+            frames.append(next(self.parent))
+        
+        return frames
+
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        return len(self.parent)//self.batch_size
+
+        
 
 class VideoReader(IOBase):
     def __init__(self, video_path:str) -> None:
@@ -46,6 +68,22 @@ class VideoReader(IOBase):
     
     def reset(self):
         self.seek(0)
+
+    def batch_iter(self, batch_size:int):
+        return VideoBatchIter(self, batch_size)
+
+    @staticmethod
+    def frames_to_tensor(frames: List[np.ndarray]):
+        transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
+
+        all_frames = zeros((len(frames) ,frames[0].shape[2], frames[0].shape[0], frames[0].shape[1]))
+        for idx, f in enumerate(frames):
+            pf = cv2.cvtColor(f, cv2.COLOR_BGR2RGB) # Convert from CV2's BGR to RGB
+            frame_tensor = transform(pf) # Convert the image to tensor
+            all_frames[idx] = frame_tensor
+
 
     def __len__(self):
         return self.num_frames
