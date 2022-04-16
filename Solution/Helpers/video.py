@@ -33,13 +33,16 @@ class VideoBatchIter():
 
 class VideoReader(IOBase):
     def __init__(self, video_path:str) -> None:
+        self.finished_init = False
         super().__init__()
         self.path = video_path
         self.cap:Any = cv2.VideoCapture(video_path) # type: ignore
         self.num_frames:int = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)) #type: ignore
+        self.finished_init = True
     
     def __del__(self):
-        self.cap.release()
+        if self.finished_init:
+            self.cap.release()
 
     def __next__(self)->np.ndarray:
         sucess, image = self.cap.read()
@@ -63,7 +66,7 @@ class VideoReader(IOBase):
         return int(self.cap.get(cv2.CAP_PROP_POS_FRAMES)) # type: ignore
     
     def seek(self, frame_idx:int):
-        assert(frame_idx>0 and frame_idx<self.num_frames)
+        assert(frame_idx>=0 and frame_idx<self.num_frames)
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx) # type: ignore
     
     def reset(self):

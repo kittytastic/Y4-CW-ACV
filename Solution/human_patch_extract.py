@@ -8,7 +8,9 @@ from PIL import Image
 from IPython import display
 from torchvision.transforms import transforms
 from Helpers.video import VideoReader
+from Helpers.video_loader import VideoLoader
 from Helpers.image_dir import ImageDirWriter
+from Helpers.images import tensor_to_openCV
 from tqdm import tqdm
 
 # Adapted from: https://colab.research.google.com/drive/1bWLB3tmWv4XyJSu4DHtZ0-b-n-DACSKx?usp=sharing
@@ -25,20 +27,8 @@ class MaskRCNN():
         self.model.to(device).eval()
 
 
-    def process_frame(self, frames: List[np.ndarray], threshold:float=0.965):
-        # Transform to convert the image to tensor
-        transform = transforms.Compose([
-            transforms.ToTensor()
-        ])
-
-        # Analyze the image
-        all_frames = torch.zeros((len(frames) ,frames[0].shape[2], frames[0].shape[0], frames[0].shape[1]))
-        for idx, f in enumerate(frames):
-            pf = cv2.cvtColor(f, cv2.COLOR_BGR2RGB) # Convert from CV2's BGR to RGB
-            frame_tensor = transform(pf) # Convert the image to tensor
-            all_frames[idx] = frame_tensor
-        
-        frames_tensor = all_frames.to(device) # add a batch dimension
+    def process_frames(self, frames:Any, threshold:float=0.965):
+        frames_tensor = frames.to(device) # add a batch dimension
         with torch.no_grad():
             outputs = self.model(frames_tensor)
 
@@ -57,18 +47,22 @@ class MaskRCNN():
             frame_results.append((scores, masks, boxes, labels))
         return frame_results
     
-    def get_humans(self, frames:List[np.ndarray]):
-        frame_results = self.process_frame(frames)
+    def get_humans(self, frames:Any):
+        frame_results = self.process_frames(frames)
         people:List[np.ndarray] = []
         
-        for (scores, masks, boxes, labels), frame in zip(frame_results, frames):
-
+        for idx, (scores, masks, boxes, labels) in enumerate(frame_results):
+            frame = tensor_to_openCV(frames[idx].detach().cpu())
+            
             # Get the image 
             out_frame = frame.copy()
             out_frame = np.array(out_frame)
 
             # Draw the segmentation masks with the text labels
             for i in range(len(masks)): # For all detected objects with score > threshold
+                if labels[i]!="person":
+                    #print(f"Skipping: {labels[i]}")
+                    continue
                 x1, y1, x2, y2 = int(boxes[i][0][0]), int(boxes[i][0][1]), int(boxes[i][1][0]), int(boxes[i][1][1])
                 #print(f"{labels[i]} : {float(scores[i])} ({x1}, {y1}, {x2}, {y2})")
                 color = self.COLORS[random.randrange(0, len(self.COLORS))] # Pick a random color
@@ -100,11 +94,15 @@ def init_torch()->torch.device:
 
 if __name__=="__main__":
     print("------ Human Patch Extract ------")
+    batch_size = 16
     device = init_torch()
     mask_rcnn = MaskRCNN(device)
     video = VideoReader("../Dataset/Train/Games/Video1.mp4")
     outstream = ImageDirWriter("../Dataset/Generated/HumanPatches")
-    for frames  in tqdm(video.batch_iter(16)):
+    ds = VideoLoader('../Dataset/Train/Games/Video1.mp4')
+    data = torch.utils.data.DataLoader(ds, num_workers=2, batch_size=batch_size)
+    
+    for frames  in tqdm(data, total = len(video)//batch_size):
         people = mask_rcnn.get_humans(frames)
         for p in people:
             outstream.write_frame(p)
