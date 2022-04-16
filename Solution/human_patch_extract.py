@@ -21,10 +21,11 @@ class MaskRCNN():
         # Initialize the model and set it to the evaluation mode
         self.model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True, progress=True, num_classes=91)
         self.model.to(device).eval()
+        self.device = device
 
 
     def process_frames(self, frames:Any, threshold:float=0.965):
-        frames_tensor = frames.to(device) # add a batch dimension
+        frames_tensor = frames.to(self.device) # add a batch dimension
         with torch.no_grad():
             outputs = self.model(frames_tensor)
 
@@ -121,7 +122,7 @@ def full_mode(workers:int, batch_size: int):
         for tensor, opencv  in tqdm(data, total = len(video)//batch_size):
             people = mask_rcnn.get_humans(tensor, opencv)
             samples += len(people)
-            game_outstream.write_frames(people)
+            movie_outstream.write_frames(people)
         
         print(f"\t\t{samples} samples")
         total_samples += samples
@@ -132,7 +133,7 @@ if __name__=="__main__":
     
     parser = argparse.ArgumentParser(description='Extract Human Patches')
     parser.add_argument('-b', '--batch', type=int,help='Batch Size', default=16)
-    parser.add_argument('-w', '--workers', type=int, help='Number of Workers', default=4)
+    parser.add_argument('-w', '--workers', type=int, help='Number of Workers', default=2)
     parser.add_argument('-m', '--mode', type=str, help='Operation Mode', default="full")
     args = parser.parse_args()
 
