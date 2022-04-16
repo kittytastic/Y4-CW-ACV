@@ -18,8 +18,13 @@ class ImageDirWriter(IOBase):
     def write_frames(self, frames):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for f in frames:
-                executor.submit(self.write_frame, frame=f)
+                executor.submit(self.write_atomic_frame, frame=f, counter=self.counter)
+                self.counter +=1
     
+    def write_atomic_frame(self, frame, counter):
+        file_name =  f"{self.prefix}-{counter}.{self.file_type}"
+        cv2.imwrite(os.path.join(self.dir_path, file_name), frame)
+        
     def write_frame(self, frame):
         file_name =  f"{self.prefix}-{self.counter}.{self.file_type}"
         cv2.imwrite(os.path.join(self.dir_path, file_name), frame)

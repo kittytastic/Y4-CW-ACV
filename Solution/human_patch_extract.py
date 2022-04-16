@@ -35,15 +35,20 @@ class MaskRCNN():
 
         frame_results = []
         for i in range(len(frames)):
-            # Get individual types of output from the outputs variable
-            scores = list(outputs[i]['scores'].detach().cpu().numpy()) # Get scores
-            thresholded_objects = [scores.index(i) for i in scores if i > 0.965] # Get an index for the objects having the scores > a threshold of 0.965
-            thresholded_objects_count = len(thresholded_objects) # Total objects having scores > threshold
-            masks = (outputs[i]['masks']>0.5).squeeze().detach().cpu().numpy() # Get the segmentation masks
-            masks = masks[:thresholded_objects_count] # Discard masks for objects that are below threshold by only taking the beginning of the list
-            boxes = [[(i[0], i[1]), (i[2], i[3])]  for i in outputs[0]['boxes'].detach().cpu()] # Get the bounding boxes, in (x1, y1), (x2, y2) format
-            boxes = boxes[:thresholded_objects_count] # Discard bounding boxes for objects that are below threshold by only taking the beginning of the list
-            labels = [self.coco_names[i] for i in outputs[0]['labels']] # Get the classes labels
+            scores_tensor = outputs[i]['scores'].detach()
+            scores = scores_tensor>threshold
+            thresholded_objects_count = int(scores.sum().detach().cpu())
+           
+            all_masks = (outputs[i]['masks']>0.5).detach().squeeze()
+            masks = all_masks[:thresholded_objects_count].detach().cpu().numpy()
+            
+            all_boxes = outputs[i]['boxes'].detach()
+            boxes = all_boxes[:thresholded_objects_count].cpu()
+            boxes = [[(i[0], i[1]), (i[2], i[3])]  for i in boxes] # Get the bounding boxes, in (x1, y1), (x2, y2) format
+           
+            all_labels = outputs[i]['labels'].detach()
+            labels = all_labels[:thresholded_objects_count].detach().cpu()
+            labels = [self.coco_names[lbl_idx] for lbl_idx in labels] # Get the classes labels
             frame_results.append((scores, masks, boxes, labels))
         return frame_results
     
@@ -77,13 +82,14 @@ def init_torch()->torch.device:
 
 if __name__=="__main__":
     print("------ Human Patch Extract ------")
-    batch_size = 16
+    batch_size = 2
+    workers= 0
     device = init_torch()
     mask_rcnn = MaskRCNN(device)
     video = VideoReader("../Dataset/Train/Games/Video1.mp4")
     outstream = ImageDirWriter("../Dataset/Generated/HumanPatches")
     ds = VideoLoader('../Dataset/Train/Games/Video1.mp4')
-    data = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=batch_size)
+    data = torch.utils.data.DataLoader(ds, num_workers=workers, batch_size=batch_size)
     
 
     for tensor, opencv  in tqdm(data, total = len(video)//batch_size):
