@@ -5,7 +5,6 @@ from .keypointrcnn import KeyPointRCNN
 class ClassifyPose(torch.nn.Module):
     def __init__(self, keypointrcnn:KeyPointRCNN, learning_rate = 1e-4):
         super().__init__()
-        self.optimiser = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self.keypointrcnn = keypointrcnn
 
         self.linear1 = torch.nn.Linear(17*4, 200)
@@ -14,6 +13,9 @@ class ClassifyPose(torch.nn.Module):
         self.linear3 = torch.nn.Linear(200, 200)
         self.linear4 = torch.nn.Linear(200, 5)
         self.softmax = torch.nn.Softmax()
+
+
+        self.optimiser = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, x):
         x = self.linear1(x)
@@ -37,12 +39,14 @@ class ClassifyPose(torch.nn.Module):
     def pre_proccess(self, frames):
         frame_results = self.keypointrcnn.process_frames(frames)
 
-        keypoint_tensor = torch.zeros([len(frame_results), 17*4], dtype=torch.float32)
-        for i in range(len(frame_results)):
-            assert(len(frame_results[i])>0)
-            frame_person = frame_results[i][0]
-            print("Found a person")
+        found_people = [i for i in range(len(frame_results)) if len(frame_results[i]['labels'])>0]
+        keypoint_tensor = torch.zeros([len(found_people), 17*4], dtype=torch.float32)
 
+        for idx in found_people:
+            print("Found a person")
+            key_points, key_points_score = frame_results[idx]['keypoints'], frame_results[idx]['keypoints_score']
+            flattened_tensor = torch.cat((torch.tensor(key_points.flatten()), torch.tensor(key_points_score.flatten())))
+            keypoint_tensor[idx] = flattened_tensor
 
 
 def TrainModel(model:ClassifyPose, total_epoch, train_iter, device):

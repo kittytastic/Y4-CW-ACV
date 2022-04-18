@@ -12,6 +12,7 @@ import argparse
 import os.path
 import cv2
 from Models.keypointrcnn import KeyPointRCNN        
+from Models.PoseEstimator import ClassifyPose
 from torchvision import transforms
 
 def vis_frame():
@@ -59,5 +60,9 @@ if __name__=="__main__":
 
     dl = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=2)
 
-    #print(dl.dataset.samples[0])
-    print(next(iter(dl)))
+    device = init_torch()
+    keypoint_rcnn = KeyPointRCNN(device)
+    cp = ClassifyPose(keypoint_rcnn)
+    data = next(iter(dl))
+
+    cp.pre_proccess(data[0])
