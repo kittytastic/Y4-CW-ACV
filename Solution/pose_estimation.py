@@ -7,6 +7,7 @@ from Helpers.video_loader import VideoLoader
 from Helpers.image_dir import IOBase
 from Helpers.torch import init_torch
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
+from Helpers.json import JsonDataLoader
 from tqdm import tqdm
 import argparse
 import os.path
@@ -50,19 +51,17 @@ if __name__=="__main__":
     print("------ Pose Estimation ------")
     #vis_frame()
 
-    transform = torchvision.transforms.Compose([
-    torchvision.transforms.Resize((1024, 1024)),
-    torchvision.transforms.ToTensor(),
-    ])
-    dataset = torchvision.datasets.ImageFolder('../Dataset/Extra/PoseClasses', transform=transform)
+    dataset = JsonDataLoader("../Dataset/Generated/HumanPatches/Games/Keypoints/")
 
-    print(dataset.class_to_idx)
+    #print(dataset.class_to_idx)
 
     dl = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=2)
 
-    device = init_torch()
-    keypoint_rcnn = KeyPointRCNN(device)
-    cp = ClassifyPose(keypoint_rcnn)
+    #device = init_torch()
+    #keypoint_rcnn = KeyPointRCNN(device)
+    #cp = ClassifyPose(keypoint_rcnn)
     data = next(iter(dl))
-
-    cp.pre_proccess(data[0])
+    print(data)
+    print(data['scores'].shape)
+    print(data['keypoints'].shape)
+    #cp.pre_proccess(data[0])
