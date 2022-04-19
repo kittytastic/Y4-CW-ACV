@@ -68,7 +68,6 @@ class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
         obj = json.loads(json_s)
         for k in obj.keys():
             if isinstance(obj[k], list):
-                print("Chaning Key")
                 obj[k] = torch.tensor(obj[k])
 
         return obj
@@ -91,7 +90,10 @@ class JsonClassLoader(torch.utils.data.Dataset):
             self.class_starts[idx] = end
             end+=len(cl)
             self.class_limits[idx] = end
-    
+
+    def num_classes(self):
+        return len(self.classes)
+
     def get_classes(self):
         return self.class_ids
 

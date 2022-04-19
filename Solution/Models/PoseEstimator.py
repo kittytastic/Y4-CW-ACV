@@ -3,16 +3,16 @@ import torch
 from .keypointrcnn import KeyPointRCNN
 
 class ClassifyPose(torch.nn.Module):
-    def __init__(self, keypointrcnn:KeyPointRCNN, learning_rate = 1e-4):
+    def __init__(self, learning_rate = 1e-4):
         super().__init__()
-        self.keypointrcnn = keypointrcnn
+        self.keypointrcnn = None 
 
         self.linear1 = torch.nn.Linear(17*4, 200)
-        self.activation1 = torch.nn.ReLU()
+        self.activation = torch.nn.ReLU()
         self.linear2 = torch.nn.Linear(200, 200)
         self.linear3 = torch.nn.Linear(200, 200)
         self.linear4 = torch.nn.Linear(200, 5)
-        self.softmax = torch.nn.Softmax()
+        self.cross_ent_loss = torch.nn.CrossEntropyLoss()
 
 
         self.optimiser = torch.optim.Adam(self.parameters(), lr=learning_rate)
@@ -25,11 +25,10 @@ class ClassifyPose(torch.nn.Module):
         x = self.linear3(x)
         x = self.activation(x)
         x = self.linear4(x)
-        x = self.softmax(x)
         return x
     
-    def calc_loss(self, approx, truth):
-        return (approx - truth).pow(2).mean()
+    def calc_loss(self, outputs, labels):
+        return self.cross_ent_loss(outputs, labels) 
 
     def backpropagate(self, loss):
         self.optimiser.zero_grad()
@@ -49,24 +48,38 @@ class ClassifyPose(torch.nn.Module):
             keypoint_tensor[idx] = flattened_tensor
 
 
-def TrainModel(model:ClassifyPose, total_epoch, train_iter, device):
+def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:int):
 
     
     epoch_loss = []
     
 
     for epoch in range(total_epoch):
+        data_iter = iter(train_iter)
         
         iter_loss = np.zeros(0)
         loss_item = None
 
         for i in range(10):
             # Get Data
-            x,t = next(train_iter)
-            x,t = x.to(device), t.to(device)
+            data = next(data_iter)
+            
+            key_points = data["keypoints"]
+            scores = data["scores"]
+            labels = data["class"]
+
+            scores = scores.unsqueeze(-1)
+
+            data_full = torch.cat((key_points, scores), -1)
+            data_full = data_full.flatten(-2, -1)
+
+            
+            
+            data_full, labels = data_full.to(device), labels.to(device)
 
             # Step Model
-            loss = model.forwardStep(x)
+            outputs = model.forward(data_full)
+            loss = model.calc_loss(outputs, labels)
             model.backpropagate(loss)
             
             # Collect Stats
@@ -79,6 +92,6 @@ def TrainModel(model:ClassifyPose, total_epoch, train_iter, device):
         epoch_loss.append(iter_loss.mean())
 
         # Print Status
-        epoch_iter.set_description("Current Loss %.5f    Epoch" % loss_item)
+        print("Current Loss %.5f    Epoch" % loss_item)
 
-    return (epoch_loss, t_mmd, t_recon)
+    return epoch_loss
