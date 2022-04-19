@@ -1,5 +1,6 @@
 from typing import Any, List
 import numpy as np
+from sklearn.utils import shuffle
 import torch
 import torchvision
 from Helpers.video import VideoReader
@@ -7,7 +8,7 @@ from Helpers.video_loader import VideoLoader
 from Helpers.image_dir import IOBase
 from Helpers.torch import init_torch
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
-from Helpers.json import JsonDataLoader
+from Helpers.json import JsonDataLoader, JsonClassLoader
 from tqdm import tqdm
 import argparse
 import os.path
@@ -15,6 +16,7 @@ import cv2
 from Models.keypointrcnn import KeyPointRCNN        
 from Models.PoseEstimator import ClassifyPose
 from torchvision import transforms
+
 
 def vis_frame():
     image = cv2.imread("../Dataset/Example/PeepsShot.png")
@@ -51,11 +53,11 @@ if __name__=="__main__":
     print("------ Pose Estimation ------")
     #vis_frame()
 
-    dataset = JsonDataLoader("../Dataset/Generated/HumanPatches/Games/Keypoints/")
-
+    #dataset = JsonDataLoader("../Dataset/Generated/HumanPatches/Games/Keypoints/")
+    dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Poses/")
     #print(dataset.class_to_idx)
 
-    dl = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=2)
+    dl = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=2, shuffle=True)
 
     #device = init_torch()
     #keypoint_rcnn = KeyPointRCNN(device)
@@ -64,4 +66,5 @@ if __name__=="__main__":
     print(data)
     print(data['scores'].shape)
     print(data['keypoints'].shape)
+    print(data['class'].shape)
     #cp.pre_proccess(data[0])

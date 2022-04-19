@@ -1,3 +1,4 @@
+import enum
 import json
 import os.path
 import concurrent.futures
@@ -34,6 +35,7 @@ class JsonDirWriter():
 class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
     def __init__(self, json_dir:str):
         assert(os.path.isdir(json_dir))
+        super().__init__()
         self.json_dir = json_dir
         self.file_type = "json"
         self.ordered = True
@@ -70,3 +72,51 @@ class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
                 obj[k] = torch.tensor(obj[k])
 
         return obj
+
+
+class JsonClassLoader(torch.utils.data.Dataset):
+    def __init__(self, dir_path: str) -> None:
+        assert(os.path.isdir(dir_path))
+        super().__init__()
+
+        self.dir_path = dir_path
+        self.classes = [d for d in os.listdir(self.dir_path) if os.path.isdir(os.path.join(self.dir_path, d))]
+        self.class_loaders = [JsonDataLoader(os.path.join(self.dir_path, d)) for d in self.classes]
+        self.class_ids = {i:c for i,c in enumerate(self.classes)}
+        self.class_limits = [0 for _ in range(len(self.classes))]
+        self.class_starts = [0 for _ in range(len(self.classes))]
+
+        end = 0
+        for idx, cl in enumerate(self.class_loaders):
+            self.class_starts[idx] = end
+            end+=len(cl)
+            self.class_limits[idx] = end
+    
+    def get_classes(self):
+        return self.class_ids
+
+    def __len__(self):
+        return self.class_limits[-1]
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        target_class_id = -1
+        for i, cl in enumerate(self.class_limits):
+            if idx<cl:
+                target_class_id = i
+                break
+        
+        if target_class_id == -1:
+            raise IndexError
+
+        relative_id = idx - self.class_starts[target_class_id]
+        
+
+        data = self.class_loaders[target_class_id][relative_id]
+        data['class']=torch.tensor(target_class_id)
+
+        return data
+
+        

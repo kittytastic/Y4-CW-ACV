@@ -28,7 +28,7 @@ def get_humans(model, frames_tensor:Any, frames_opencv:Any):
                 #print(f"Skipping: {labels[i]}")
                 continue
             x1, y1, x2, y2 = int(boxes[i][0][0]), int(boxes[i][0][1]), int(boxes[i][1][0]), int(boxes[i][1][1])
-            print(f"({x1} -> {x2}), ({y1} -> {y2})")
+            #print(f"({x1} -> {x2}), ({y1} -> {y2})")
             person_image = frame[y1:y2, x1:x2]
             normalised_kp = key_points[i].copy()
             normalised_kp[:,0] = (normalised_kp[:,0]-x1)/(x2-x1)
