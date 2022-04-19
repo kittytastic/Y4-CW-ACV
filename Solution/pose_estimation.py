@@ -17,7 +17,7 @@ from Models.keypointrcnn import KeyPointRCNN
 from Models.PoseEstimator import ClassifyPose, TrainModel
 from torchvision import transforms
 import wandb
-wandb.init(project="pose-estimate-model")
+wandb.init(project="pose-estimate-model", mode="disabled")
 
 
 
@@ -59,6 +59,9 @@ if __name__=="__main__":
     #dataset = JsonDataLoader("../Dataset/Generated/HumanPatches/Games/Keypoints/")
     dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Poses/")
     #print(dataset.class_to_idx)
+    trainset_len = len(dataset)//4
+    testset_len = len(dataset)-trainset_len
+    train_set, test_set = torch.utils.data.random_split(dataset, [trainset_len,testset_len])
 
     dl = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=2, shuffle=True)
 
