@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from .keypointrcnn import KeyPointRCNN
+import wandb
 
 class ClassifyPose(torch.nn.Module):
     def __init__(self, learning_rate = 1e-4):
@@ -60,9 +61,8 @@ def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:
         iter_loss = np.zeros(0)
         loss_item = None
 
-        for i in range(10):
+        for data in data_iter:
             # Get Data
-            data = next(data_iter)
             
             key_points = data["keypoints"]
             scores = data["scores"]
@@ -92,6 +92,7 @@ def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:
         epoch_loss.append(iter_loss.mean())
 
         # Print Status
+        wandb.log({"loss":epoch_loss[-1]})
         print("Current Loss %.5f    Epoch" % loss_item)
 
     return epoch_loss

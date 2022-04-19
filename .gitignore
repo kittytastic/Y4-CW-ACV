@@ -2,5 +2,5 @@ Dataset/*
 *.png
 *.mp4
 *.jpg
-
+**/wandb/**
 **/__pycache__/**

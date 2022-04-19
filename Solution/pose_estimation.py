@@ -16,6 +16,8 @@ import cv2
 from Models.keypointrcnn import KeyPointRCNN        
 from Models.PoseEstimator import ClassifyPose, TrainModel
 from torchvision import transforms
+import wandb
+wandb.init(project="pose-estimate-model")
 
 
 
@@ -68,7 +70,8 @@ if __name__=="__main__":
     print(len(dl))
 
     model = ClassifyPose()
+    wandb.watch(model, log_freq=100)
     model = model.to(device)
     print()
-    TrainModel(model, 1, dl, device, dataset.num_classes())
+    TrainModel(model, 100, dl, device, dataset.num_classes())
     #cp.pre_proccess(data[0])
