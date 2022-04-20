@@ -51,6 +51,7 @@ def process_full_video(video_path:str, image_outstream:ImageDirWriter, keypoint_
         
     for tensor, opencv  in tqdm(data, total = len(video_info)//batch_size):
         all_people = get_humans(model, tensor, opencv)
+        if len(all_people)==0: continue
         imgs, kps = zip(*all_people)
         samples += len(all_people)
         image_outstream.write_frames(imgs)
