@@ -79,13 +79,19 @@ def keypoint_perturb(data: torch.tensor):
 
 if __name__=="__main__":
     print("------ Pose Estimation ------")
+    parser = argparse.ArgumentParser(description='Extract Human Patches')
+    parser.add_argument('-b', '--batch', type=int,help='Batch Size', default=4)
+    parser.add_argument('-v', '--verbose', help='Verbose', action="store_true", default=False)
+    parser.add_argument('-i', '--iter', type=int, help='Training iters', default=100)
+    parser.add_argument('-w', '--wandb', help='Enable WandB logging', action="store_true", default=False)
+    args = parser.parse_args()
 
     dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Keypoints/", transforms={"nomalised_keypoints": keypoint_perturb})
     testset_len = len(dataset)//5
     trainset_len = len(dataset)-testset_len
     train_set, test_set = torch.utils.data.random_split(dataset, [trainset_len,testset_len])
 
-    train_loader = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=4, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=args.batch, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_set, num_workers=0, batch_size=1, shuffle=True)
 
     device = init_torch()
@@ -94,10 +100,11 @@ if __name__=="__main__":
 
 
     model = ClassifyPose()
-    wandb.init(project="pose-estimate-model", mode="disabled")
+    wandb.init(project="pose-estimate-model", mode=None if args.wandb else "disabled" )
     wandb.watch(model, log_freq=100)
     model = model.to(device)
-    model.do_training(device, 100, train_loader, test_loader)
-    model.check_accuracy(device, test_loader, verbose=True)
-    print(dataset.get_classes())
+    model.do_training(device, args.iter, train_loader, test_loader)
+    acc = model.check_accuracy(device, test_loader, verbose=args.verbose)
+    if args.verbose: print(dataset.get_classes())
+    print(f"Final accuracy: {acc:1f}")
     model.checkpoint("../Checkpoints/PoseEstimate", "final", verbose=True)
