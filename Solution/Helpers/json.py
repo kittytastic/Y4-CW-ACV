@@ -38,7 +38,7 @@ class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
         super().__init__()
         self.json_dir = json_dir
         self.file_type = "json"
-        self.ordered = True
+        self.ordered = False 
         self.refresh()
 
     def refresh(self):

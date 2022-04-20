@@ -49,9 +49,30 @@ class ClassifyPose(torch.nn.Module):
             keypoint_tensor[idx] = flattened_tensor
 
 
-def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:int):
-
+def check_accuracy(device, model, test_loader):
+    num_correct = 0
+    num_samples = 0
+    model.eval()
     
+    with torch.no_grad():
+        for data  in test_loader:
+            key_points = data["keypoints"]
+            scores = data["scores"]
+            labels = data["class"]
+            scores = scores.unsqueeze(-1)
+            data_full = torch.cat((key_points, scores), -1)
+            data_full = data_full.flatten(-2, -1)
+
+            data_full, labels = data_full.to(device), labels.to(device)
+            
+            scores = model.forward(data_full)
+            _, predictions = scores.max(1)
+            num_correct += (predictions == labels).sum()
+            num_samples += predictions.size(0)
+        
+        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}') 
+
+def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, test_iter):
     epoch_loss = []
     
 
@@ -60,7 +81,7 @@ def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:
         
         iter_loss = np.zeros(0)
         loss_item = None
-
+        model.train()
         for data in data_iter:
             # Get Data
             
@@ -69,7 +90,6 @@ def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:
             labels = data["class"]
 
             scores = scores.unsqueeze(-1)
-
             data_full = torch.cat((key_points, scores), -1)
             data_full = data_full.flatten(-2, -1)
 
@@ -94,5 +114,6 @@ def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, num_classes:
         # Print Status
         wandb.log({"loss":epoch_loss[-1]})
         print("Current Loss %.5f    Epoch" % loss_item)
+        check_accuracy(device, model, test_iter)
 
     return epoch_loss

@@ -57,13 +57,14 @@ if __name__=="__main__":
     #vis_frame()
 
     #dataset = JsonDataLoader("../Dataset/Generated/HumanPatches/Games/Keypoints/")
-    dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Poses/")
+    dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Keypoints/")
     #print(dataset.class_to_idx)
-    trainset_len = len(dataset)//4
-    testset_len = len(dataset)-trainset_len
+    testset_len = len(dataset)//5
+    trainset_len = len(dataset)-testset_len
     train_set, test_set = torch.utils.data.random_split(dataset, [trainset_len,testset_len])
 
-    dl = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=2, shuffle=True)
+    dl = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=4, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_set, num_workers=0, batch_size=1, shuffle=True)
 
     device = init_torch()
     #keypoint_rcnn = KeyPointRCNN(device)
@@ -71,10 +72,11 @@ if __name__=="__main__":
     data = next(iter(dl))
     #print(data)
     print(len(dl))
+    print(len(test_loader))
 
     model = ClassifyPose()
     wandb.watch(model, log_freq=100)
     model = model.to(device)
     print()
-    TrainModel(model, 100, dl, device, dataset.num_classes())
+    TrainModel(model, 100, dl, device, test_loader)
     #cp.pre_proccess(data[0])
