@@ -30,7 +30,7 @@ def find_target_file(target_file:str, mapping_files:Dict[str, str], mapping_dir)
     return mapping_files[target_file]
 
 
-def mirror_dir(SOURCE_PATTEN:str, TARGET_PATTEN:str, SOURCE_DIR:str, MAPPING_DIR:str, TARGET_DIR:str, verbose:bool=False):
+def mirror_dir(SOURCE_PATTEN:str, TARGET_PATTEN:str, DATA_PATTEN:str, SOURCE_DIR:str, MAPPING_DIR:str, TARGET_DIR:str, verbose:bool=False):
     mapping_files = get_mapping_files(MAPPING_DIR)
 
 
@@ -43,8 +43,9 @@ def mirror_dir(SOURCE_PATTEN:str, TARGET_PATTEN:str, SOURCE_DIR:str, MAPPING_DIR
             match = source_p.parse(file)
             if match is None: continue
             target_file = TARGET_PATTEN.format(**match.named) # type: ignore
+            data_file = DATA_PATTEN.format(**match.named) # type: ignore
             
-            mapping_file_path = find_target_file(target_file, mapping_files, MAPPING_DIR)
+            mapping_file_path = find_target_file(data_file, mapping_files, MAPPING_DIR)
             
             # copy to target dir
             copy_to_target(TARGET_DIR, str(rel_path), target_file,  mapping_file_path)
@@ -55,6 +56,7 @@ def mirror_dir(SOURCE_PATTEN:str, TARGET_PATTEN:str, SOURCE_DIR:str, MAPPING_DIR
 if __name__=="__main__":
     DEFAULT_SOURCE_PATTEN = "output-{id}.png"
     DEFAULT_TARGET_PATTEN = "output-{id}.json"
+    DEFAULT_DATA_PATTEN = "output-{id}.json"
 
     DEFAULT_SOURCE_DIR = "./source"
     DEFAULT_MAPPING_DIR = "./mapping"
@@ -62,10 +64,11 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Extract Human Patches')
     parser.add_argument('-s', '--source_pat', type=str,help='Source Patten', default=DEFAULT_SOURCE_PATTEN)
+    parser.add_argument('-p', '--data_pat', type=str, help='Data Patten', default=DEFAULT_DATA_PATTEN)
     parser.add_argument('-t', '--target_pat', type=str, help='Target Patten', default=DEFAULT_TARGET_PATTEN)
     parser.add_argument('-i', '--source_dir', type=str, help='Source Directory', default=DEFAULT_SOURCE_DIR)
-    parser.add_argument('-o', '--data_dir', type=str, help='Data Directory', default=DEFAULT_MAPPING_DIR)
-    parser.add_argument('-d', '--target_dir', type=str, help='Target Directory', default=DEFAULT_TARGET_DIR)
+    parser.add_argument('-d', '--data_dir', type=str, help='Data Directory', default=DEFAULT_MAPPING_DIR)
+    parser.add_argument('-o', '--target_dir', type=str, help='Target Directory', default=DEFAULT_TARGET_DIR)
     parser.add_argument('-v', '--verbose', action="store_true", default = False)
     args = parser.parse_args()
     assert(os.path.isdir(args.source_dir))
@@ -73,11 +76,12 @@ if __name__=="__main__":
     assert(os.path.isdir(args.target_dir))
     
     print(f"Making: {args.target_dir}   look like  {args.source_dir}")
+    print(f"File mapping: {args.source_pat}  ->  {args.target_pat}")
     print(f"Using data from: {args.data_dir}")
-    print(f"And file Matching patten: {args.source_pat}  ->  {args.target_pat}")
+    print(f"Using data search patten: {args.data_pat}")
     print("Do you want to continue?")
     y = input()
     if y!="y": exit()
 
-    mirror_dir(args.source_pat, args.target_pat, args.source_dir, args.data_dir, args.target_dir, args.verbose)
+    mirror_dir(args.source_pat, args.target_pat, args.data_pat, args.source_dir, args.data_dir, args.target_dir, args.verbose)
 
