@@ -14,10 +14,10 @@ import argparse
 import os.path
 import cv2
 from Models.keypointrcnn import KeyPointRCNN        
-from Models.PoseEstimator import ClassifyPose, TrainModel
+from Models.PoseEstimator import ClassifyPose
 from torchvision import transforms
 import wandb
-wandb.init(project="pose-estimate-model", mode="disabled")
+
 
 
 
@@ -54,29 +54,24 @@ def classify_pose(frame_results):
 
 if __name__=="__main__":
     print("------ Pose Estimation ------")
-    #vis_frame()
 
-    #dataset = JsonDataLoader("../Dataset/Generated/HumanPatches/Games/Keypoints/")
     dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Keypoints/")
-    #print(dataset.class_to_idx)
     testset_len = len(dataset)//5
     trainset_len = len(dataset)-testset_len
     train_set, test_set = torch.utils.data.random_split(dataset, [trainset_len,testset_len])
 
-    dl = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=4, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=2, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_set, num_workers=0, batch_size=1, shuffle=True)
 
     device = init_torch()
-    #keypoint_rcnn = KeyPointRCNN(device)
-    #cp = ClassifyPose(keypoint_rcnn)
-    data = next(iter(dl))
-    #print(data)
-    print(len(dl))
-    print(len(test_loader))
+    print(f"Training set: {trainset_len} items")
+    print(f"Test set    : {testset_len} items")
+
 
     model = ClassifyPose()
+    wandb.init(project="pose-estimate-model", mode="disabled")
     wandb.watch(model, log_freq=100)
     model = model.to(device)
-    print()
-    TrainModel(model, 100, dl, device, test_loader)
-    #cp.pre_proccess(data[0])
+    model.do_training(device, 5, train_loader, test_loader)
+    model.check_accuracy(device, test_loader, verbose=True)
+    model.checkpoint("../Checkpoints/PoseEstimate", "final", verbose=True)

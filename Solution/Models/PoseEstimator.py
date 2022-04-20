@@ -1,20 +1,19 @@
+from typing import Any, Dict
 import numpy as np
 import torch
-from .keypointrcnn import KeyPointRCNN
 import wandb
+import os
+from tqdm import trange
 
 class ClassifyPose(torch.nn.Module):
     def __init__(self, learning_rate = 1e-4):
         super().__init__()
-        self.keypointrcnn = None 
-
         self.linear1 = torch.nn.Linear(17*4, 200)
         self.activation = torch.nn.ReLU()
         self.linear2 = torch.nn.Linear(200, 200)
         self.linear3 = torch.nn.Linear(200, 200)
         self.linear4 = torch.nn.Linear(200, 5)
         self.cross_ent_loss = torch.nn.CrossEntropyLoss()
-
 
         self.optimiser = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -36,84 +35,87 @@ class ClassifyPose(torch.nn.Module):
         loss.backward()
         self.optimiser.step()
     
-    def pre_proccess(self, frames):
-        frame_results = self.keypointrcnn.process_frames(frames)
 
-        found_people = [i for i in range(len(frame_results)) if len(frame_results[i]['labels'])>0]
-        keypoint_tensor = torch.zeros([len(found_people), 17*4], dtype=torch.float32)
+    def checkpoint(self, path, name, verbose:bool=False):
+        checkpoint_path = os.path.join(path, f'{name}.chkpt')
+        torch.save({'model':self.state_dict()}, checkpoint_path)
+        if verbose: print(f"Saved model to: {checkpoint_path}")
 
-        for idx in found_people:
-            print("Found a person")
-            key_points, key_points_score = frame_results[idx]['keypoints'], frame_results[idx]['keypoints_score']
-            flattened_tensor = torch.cat((torch.tensor(key_points.flatten()), torch.tensor(key_points_score.flatten())))
-            keypoint_tensor[idx] = flattened_tensor
+    def restore(self, path, name):
+        params = torch.load(os.path.join(path, f'{name}.chkpt'))
+        self.load_state_dict(params['model'])
+
+    def pack_keypoint_tensor(self, data:Dict[str, Any])->Any:
+        key_points = data["keypoints"]
+        scores = data["scores"]
+        
+        scores = scores.unsqueeze(-1)
+        data_full = torch.cat((key_points, scores), -1)
+        data_full = data_full.flatten(-2, -1)
+
+        return data_full
+
+    def check_accuracy(self, device, test_loader, verbose=False):
+        model = self
+        num_correct = 0
+        num_samples = 0
+        model.eval()
+        
+        with torch.no_grad():
+            for data  in test_loader:
+                labels = data["class"]
+                data_full = self.pack_keypoint_tensor(data) 
+
+                data_full, labels = data_full.to(device), labels.to(device)
+                
+                scores = model.forward(data_full)
+                _, predictions = scores.max(1)
+                correct = predictions == labels
+                num_correct += (predictions == labels).sum()
+                num_samples += predictions.size(0)
+                if verbose:
+                    for idx, c in enumerate(correct):
+                        if not c:
+                            print(f"{data['file_name'][idx]}\t\tguessed: {predictions[idx]}   was:{labels[idx]}")
 
 
-def check_accuracy(device, model, test_loader):
-    num_correct = 0
-    num_samples = 0
-    model.eval()
+
+        if verbose:
+            print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}') 
     
-    with torch.no_grad():
-        for data  in test_loader:
-            key_points = data["keypoints"]
-            scores = data["scores"]
-            labels = data["class"]
-            scores = scores.unsqueeze(-1)
-            data_full = torch.cat((key_points, scores), -1)
-            data_full = data_full.flatten(-2, -1)
+        return float(num_correct)/float(num_samples)*100
 
-            data_full, labels = data_full.to(device), labels.to(device)
-            
-            scores = model.forward(data_full)
-            _, predictions = scores.max(1)
-            num_correct += (predictions == labels).sum()
-            num_samples += predictions.size(0)
-        
-        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}') 
+    def do_training(self, device, total_iters, train_iter, test_iter):
+        model = self
+        epoch_loss = []
+        epoch_iter = trange(total_iters)
 
-def TrainModel(model:ClassifyPose, total_epoch, train_iter, device, test_iter):
-    epoch_loss = []
-    
+        for _ in epoch_iter:
+            iter_loss = np.zeros(0)
+            loss_item = None
+            model.train()
+            for data in train_iter:
+                # Get Data
+                labels = data["class"]
+                data_full = self.pack_keypoint_tensor(data)
+                
+                data_full, labels = data_full.to(device), labels.to(device)
 
-    for epoch in range(total_epoch):
-        data_iter = iter(train_iter)
-        
-        iter_loss = np.zeros(0)
-        loss_item = None
-        model.train()
-        for data in data_iter:
-            # Get Data
-            
-            key_points = data["keypoints"]
-            scores = data["scores"]
-            labels = data["class"]
+                # Step Model
+                outputs = model.forward(data_full)
+                loss = model.calc_loss(outputs, labels)
+                model.backpropagate(loss)
+                
+                # Collect Stats
+                loss_item = loss.detach().item()
 
-            scores = scores.unsqueeze(-1)
-            data_full = torch.cat((key_points, scores), -1)
-            data_full = data_full.flatten(-2, -1)
-
-            
-            
-            data_full, labels = data_full.to(device), labels.to(device)
-
-            # Step Model
-            outputs = model.forward(data_full)
-            loss = model.calc_loss(outputs, labels)
-            model.backpropagate(loss)
-            
-            # Collect Stats
-            loss_item = loss.detach().item()
-
-            iter_loss = np.append(iter_loss, loss_item)
+                iter_loss = np.append(iter_loss, loss_item)
 
         
-        
-        epoch_loss.append(iter_loss.mean())
+            epoch_loss.append(iter_loss.mean())
+            acc = self.check_accuracy(device, test_iter)
+            
+            wandb.log({"loss":epoch_loss[-1], "acc":acc})
+            epoch_iter.set_description(f"Current Loss {epoch_loss[-1]:.5f}    Epoch")
 
-        # Print Status
-        wandb.log({"loss":epoch_loss[-1]})
-        print("Current Loss %.5f    Epoch" % loss_item)
-        check_accuracy(device, model, test_iter)
-
-    return epoch_loss
+        return epoch_loss

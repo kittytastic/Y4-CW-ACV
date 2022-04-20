@@ -69,6 +69,8 @@ class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
         for k in obj.keys():
             if isinstance(obj[k], list):
                 obj[k] = torch.tensor(obj[k])
+        
+        obj["file_name"] = self.eligable_files[idx]
 
         return obj
 
