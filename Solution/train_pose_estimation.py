@@ -107,4 +107,4 @@ if __name__=="__main__":
     acc = model.check_accuracy(device, test_loader, verbose=args.verbose)
     if args.verbose: print(dataset.get_classes())
     print(f"Final accuracy: {acc:1f}")
-    model.checkpoint("../Checkpoints/PoseEstimate", "final", verbose=True)
+    model.checkpoint("../Checkpoints/PoseEstimate", "final", dataset.get_classes(), verbose=True)

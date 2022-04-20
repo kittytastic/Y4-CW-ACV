@@ -36,14 +36,15 @@ class ClassifyPose(torch.nn.Module):
         self.optimiser.step()
     
 
-    def checkpoint(self, path, name, verbose:bool=False):
+    def checkpoint(self, path, name, class_dict, verbose:bool=False):
         checkpoint_path = os.path.join(path, f'{name}.chkpt')
-        torch.save({'model':self.state_dict()}, checkpoint_path)
+        torch.save({'model':self.state_dict(), 'classes':class_dict}, checkpoint_path)
         if verbose: print(f"Saved model to: {checkpoint_path}")
 
     def restore(self, path, name):
         params = torch.load(os.path.join(path, f'{name}.chkpt'))
         self.load_state_dict(params['model'])
+        return params['classes']
 
     def pack_keypoint_tensor(self, data:Dict[str, Any])->Any:
         key_points = data["nomalised_keypoints"]
@@ -78,13 +79,24 @@ class ClassifyPose(torch.nn.Module):
                         if not c:
                             print(f"{data['file_name'][idx]}\t\tguessed: {predictions[idx]}   was:{labels[idx]}")
 
-
+    
 
         if verbose:
             print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}') 
     
         return float(num_correct)/float(num_samples)*100
 
+    def classify(self, device, in_data):
+        self.eval()
+        with torch.no_grad():
+            data_full = in_data.to(device)
+            
+            scores = self.forward(data_full)
+            _, predictions = scores.max(1)
+
+
+        return predictions
+    
     def do_training(self, device, total_iters, train_iter, test_iter):
         model = self
         epoch_loss = []
