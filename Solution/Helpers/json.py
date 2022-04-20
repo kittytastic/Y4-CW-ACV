@@ -3,6 +3,7 @@ import json
 import os.path
 import concurrent.futures
 import os
+from typing import Any, Callable, Dict
 import torch
 
 class JsonDirWriter():
@@ -33,12 +34,13 @@ class JsonDirWriter():
         self.counter+=1
 
 class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
-    def __init__(self, json_dir:str):
+    def __init__(self, json_dir:str, transforms:Dict[str, Callable[[Any], Any]]={}):
         assert(os.path.isdir(json_dir))
         super().__init__()
         self.json_dir = json_dir
         self.file_type = "json"
         self.ordered = False 
+        self.transforms = transforms
         self.refresh()
 
     def refresh(self):
@@ -69,6 +71,9 @@ class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
         for k in obj.keys():
             if isinstance(obj[k], list):
                 obj[k] = torch.tensor(obj[k])
+            
+            if k in self.transforms:
+                obj[k] = self.transforms[k](obj[k])
         
         obj["file_name"] = self.eligable_files[idx]
 
@@ -76,13 +81,15 @@ class JsonDataLoader(torch.utils.data.Dataset): #type: ignore
 
 
 class JsonClassLoader(torch.utils.data.Dataset):
-    def __init__(self, dir_path: str) -> None:
+    def __init__(self, dir_path: str, transforms:Dict[str, Callable[[Any], Any]]={}) -> None:
         assert(os.path.isdir(dir_path))
         super().__init__()
 
         self.dir_path = dir_path
+        self.transforms = transforms
+
         self.classes = [d for d in os.listdir(self.dir_path) if os.path.isdir(os.path.join(self.dir_path, d))]
-        self.class_loaders = [JsonDataLoader(os.path.join(self.dir_path, d)) for d in self.classes]
+        self.class_loaders = [JsonDataLoader(os.path.join(self.dir_path, d), transforms=self.transforms) for d in self.classes]
         self.class_ids = {i:c for i,c in enumerate(self.classes)}
         self.class_limits = [0 for _ in range(len(self.classes))]
         self.class_starts = [0 for _ in range(len(self.classes))]

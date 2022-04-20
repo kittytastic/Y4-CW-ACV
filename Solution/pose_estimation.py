@@ -17,6 +17,7 @@ from Models.keypointrcnn import KeyPointRCNN
 from Models.PoseEstimator import ClassifyPose
 from torchvision import transforms
 import wandb
+import random
 
 
 
@@ -52,15 +53,39 @@ def classify_pose(frame_results):
             print(f"{KeyPointRCNN.coco_keypoints[j]}: {keypoints[i][j]}  ({keypoint_scores[i][j]})")
 
 
+def random_flip(data:torch.tensor):
+    flip = random.random()
+    if flip>0.5:
+        data[:,0] = 1-data[:,0]
+    return data
+
+def random_rotate(data:torch.tensor):
+    max_angle_degrees = 3
+    rnd = random.random()
+    angle_degrees = (2*max_angle_degrees)*rnd - max_angle_degrees
+    angle_radians = (angle_degrees/360)*np.pi # type: ignore
+    data[:,0] -= 0.5
+    data[:,1] -= 0.5
+    data[:,0] = data[:,0]*np.cos(angle_radians) - data[:,0]*np.sin(angle_radians) # type: ignore
+    data[:,1] = data[:,0]*np.sin(angle_radians) + data[:,1]*np.cos(angle_radians) # type: ignore
+    data[:,0] += 0.5
+    data[:,1] += 0.5
+    return data
+
+def keypoint_perturb(data: torch.tensor):
+    data = random_flip(data)
+    data = random_rotate(data)
+    return data
+
 if __name__=="__main__":
     print("------ Pose Estimation ------")
 
-    dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Keypoints/")
+    dataset = JsonClassLoader("../Dataset/Extra/PoseClasses/Keypoints/", transforms={"nomalised_keypoints": keypoint_perturb})
     testset_len = len(dataset)//5
     trainset_len = len(dataset)-testset_len
     train_set, test_set = torch.utils.data.random_split(dataset, [trainset_len,testset_len])
 
-    train_loader = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=2, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_set, num_workers=0, batch_size=4, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_set, num_workers=0, batch_size=1, shuffle=True)
 
     device = init_torch()
@@ -72,6 +97,7 @@ if __name__=="__main__":
     wandb.init(project="pose-estimate-model", mode="disabled")
     wandb.watch(model, log_freq=100)
     model = model.to(device)
-    model.do_training(device, 5, train_loader, test_loader)
+    model.do_training(device, 100, train_loader, test_loader)
     model.check_accuracy(device, test_loader, verbose=True)
+    print(dataset.get_classes())
     model.checkpoint("../Checkpoints/PoseEstimate", "final", verbose=True)

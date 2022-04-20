@@ -46,7 +46,7 @@ class ClassifyPose(torch.nn.Module):
         self.load_state_dict(params['model'])
 
     def pack_keypoint_tensor(self, data:Dict[str, Any])->Any:
-        key_points = data["keypoints"]
+        key_points = data["nomalised_keypoints"]
         scores = data["scores"]
         
         scores = scores.unsqueeze(-1)
