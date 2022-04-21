@@ -78,8 +78,8 @@ def keypoint_perturb(data: torch.tensor):
     return data
 
 if __name__=="__main__":
-    print("------ Pose Estimation ------")
-    parser = argparse.ArgumentParser(description='Extract Human Patches')
+    print("------ Pose Estimation - Train ------")
+    parser = argparse.ArgumentParser(description='Pose Estimation Training')
     parser.add_argument('-b', '--batch', type=int,help='Batch Size', default=4)
     parser.add_argument('-v', '--verbose', help='Verbose', action="store_true", default=False)
     parser.add_argument('-i', '--iter', type=int, help='Training iters', default=100)

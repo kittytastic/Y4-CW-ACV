@@ -40,7 +40,7 @@ def process_directory(device, model, source_patten, data_patten, target_patten, 
 
 if __name__=="__main__":
     print("------ Pose Estimation - Eval ------")
-    parser = argparse.ArgumentParser(description='Extract Human Patches')
+    parser = argparse.ArgumentParser(description='Pose Estimation Eval')
     parser.add_argument('-o', '--outdir', type=str, help='Output Directory', default="../Dataset/Generated/Poses")
     args = parser.parse_args()
     assert(os.path.isdir(args.outdir))
