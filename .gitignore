@@ -4,3 +4,4 @@ Dataset/*
 *.jpg
 **/wandb/**
 **/__pycache__/**
+**/results/**
