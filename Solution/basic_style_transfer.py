@@ -9,6 +9,10 @@ from pytorch_CycleGAN_and_pix2pix.options.test_options import TestOptions
 from pytorch_CycleGAN_and_pix2pix.util.visualizer import save_images
 from pytorch_CycleGAN_and_pix2pix.util import html
 from Helpers.video_loader import VideoLoader
+from Helpers.video import IOBase
+
+def adjust_color(in_image):
+    return (in_image*2.0)-1
 
 if __name__=="__main__":
     print("---------- Basic Style Transfer ---------")
@@ -32,7 +36,7 @@ if __name__=="__main__":
     webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
 
 
-    ds = VideoLoader("../Dataset/Train/Games/Video1.mp4")
+    ds = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=adjust_color)
     dataset = torch.utils.data.DataLoader(ds, num_workers=opt.num_threads, batch_size=opt.batch_size) # type: ignore
     samples = 0
 
@@ -46,14 +50,21 @@ if __name__=="__main__":
             break
         #print(data[0].shape)
         #print(data[1].shape)
-        cgan_data = {"A": data[0], "A_paths":["../Dataset/Extra\\PoseClasses\\Patches\\full-body\\game_output-100.png"]}
+        cgan_data = {"A": data[0], "A_paths":["nopath"]}
+        #print(data[0].numpy().shape)
+        #print(data[1].numpy().shape)
+        #IOBase.view_frame(data[0][0].numpy())
+        #IOBase.view_frame(data[1][0].numpy())
         #print(data)
         #print(data["A"].shape)
         model.set_input(cgan_data)  # unpack data from data loader
         model.test()           # run inference
         visuals = model.get_current_visuals()  # get image results
+        #print(visuals)
         img_path = model.get_image_paths()     # get image paths
+        #print(img_path)
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
+        #exit()
     webpage.save()  # save the HTML

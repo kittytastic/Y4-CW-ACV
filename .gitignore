@@ -5,3 +5,4 @@ Dataset/*
 **/wandb/**
 **/__pycache__/**
 **/results/**
+Solution/checkpoints/**

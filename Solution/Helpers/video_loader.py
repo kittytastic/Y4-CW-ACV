@@ -1,3 +1,4 @@
+from typing import Optional, Callable, Any
 import torch.utils.data
 from .video import VideoReader
 import numpy as np
@@ -6,7 +7,7 @@ import cv2
 from torchvision.transforms import transforms
 
 class VideoSubsectionReader(VideoReader):
-    def __init__(self, video_path, start:int, end:int):
+    def __init__(self, video_path, start:int, end:int, user_transform:Optional[Callable[[Any], Any]]=None):
         super().__init__(video_path)
         self.start = start
         self.end = end
@@ -14,6 +15,7 @@ class VideoSubsectionReader(VideoReader):
         self.tf = transforms.Compose([
             transforms.ToTensor()
         ])
+        self.user_transforms = user_transform
     
     def __iter__(self):
         self.seek(self.start)
@@ -34,16 +36,19 @@ class VideoSubsectionReader(VideoReader):
         next_frame = super().__next__()
         col_correct = cv2.cvtColor(next_frame, cv2.COLOR_BGR2RGB)
         tensor_correct = self.tf(col_correct)
+        if self.user_transforms is not None:
+            tensor_correct = self.user_transforms(tensor_correct)
         return tensor_correct, next_frame 
 
 class VideoLoader(torch.utils.data.IterableDataset):
-    def __init__(self, video_path:str):
+    def __init__(self, video_path:str, user_transform:Optional[Callable[[Any], Any]] = None):
         super().__init__()
         self.start = 0
         self.video_info = VideoReader(video_path)
         self.end = len(self.video_info)
         self.video_info = None # cant multi thread with complex obj in loader
         self.video_path = video_path
+        self.user_transform = user_transform
 
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
@@ -58,5 +63,5 @@ class VideoLoader(torch.utils.data.IterableDataset):
             iter_end = min(iter_start + per_worker, self.end)
         
         
-        reader = VideoSubsectionReader(self.video_path, iter_start, iter_end)
+        reader = VideoSubsectionReader(self.video_path, iter_start, iter_end, user_transform=self.user_transform)
         return iter(reader)
