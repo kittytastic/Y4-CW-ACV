@@ -7,6 +7,7 @@ import os
 from pytorch_CycleGAN_and_pix2pix.models import create_model
 from pytorch_CycleGAN_and_pix2pix.data import create_dataset
 from pytorch_CycleGAN_and_pix2pix.options.test_options import TestOptions
+from pytorch_CycleGAN_and_pix2pix.options.train_options import TrainOptions
 from pytorch_CycleGAN_and_pix2pix.util.visualizer import save_images
 from pytorch_CycleGAN_and_pix2pix.util import html
 from Helpers.video_loader import VideoLoader
@@ -25,15 +26,57 @@ def set_options():
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     
-    opt.batch_size = 4  
+    opt.batch_size = 2  
     opt.checkpoints_dir = "./pytorch_CycleGAN_and_pix2pix/checkpoints"
-    opt.model = "test"
+    opt.model = "cycle_gan"
     opt.no_dropout = True
     opt.name = "style_monet_pretrained" if opt.name == "monet" else "style_cezanne_pretrained"
     return opt
 
 
+def experiment_full_cycle(opt: Any, game_video_loader: VideoLoader, movie_video_loader: VideoLoader):
+    assert(opt.model=="cycle_gan")
+    results_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))
+
+    # Model + Data setup
+    model = create_model(opt)
+    model.setup(opt)
+    game_dataset = torch.utils.data.DataLoader(game_video_loader, num_workers=opt.num_threads, batch_size=opt.batch_size) # type: ignore
+    movie_dataset = torch.utils.data.DataLoader(movie_video_loader, num_workers=opt.num_threads, batch_size=opt.batch_size) # type: ignore
+
+    # Web Output
+    web_dir = results_dir
+    print('creating web directory', web_dir)
+    webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
+
+    # Test Model
+    model.eval()
+    i = 0
+    for A_data, B_data in tqdm(zip(game_dataset, movie_dataset), total = opt.num_test//opt.batch_size):
+        if i >= opt.num_test: break
+        i+=opt.batch_size
+        
+        # Input
+        A_tensor_img, A_numpy_img, B_tensor_img, B_numpy_img = A_data[0], A_data[1], B_data[0], B_data[1]
+        image_names = [f"{game_video_loader.video_path.split('.')[-2]}:    frame {j}." for j in range(i-opt.batch_size, i)]
+        cgan_data = {"B": B_tensor_img, "B_paths":image_names, "A": A_tensor_img, "A_paths":image_names}
+        model.set_input(cgan_data) 
+        model.test()
+        
+        # Results
+        visuals = model.get_current_visuals() 
+        
+        # Save Results 
+        for j in range(opt.batch_size):    
+            visuals_splice = OrderedDict()
+            for k in ["real_A", "fake_A", "rec_A", "real_B", "fake_B", "rec_B"]:
+                visuals_splice[k] = visuals[k][j].unsqueeze(0)
+            save_images(webpage, visuals_splice, [image_names[j]], aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
+    
+    webpage.save()
+
 def experiment(opt: Any, video_loader: VideoLoader):
+    assert(opt.model=="test")
     results_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))
     video_name  = f"{opt.name}.mp4"
 
@@ -89,6 +132,9 @@ if __name__=="__main__":
     opt = set_options()
 
     print("\n\n---------- Q2.1 Frame Transfer - Eval ---------")
-    ds = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=tensor_to_cycle_gan_colour)
-    opt.num_test = 10
-    experiment(opt, ds)
+    game_loader = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=tensor_to_cycle_gan_colour)
+    movie_loader = VideoLoader("../Dataset/Train/Movie/Video2.mp4", user_transform=tensor_to_cycle_gan_colour)
+    movie_loader.start=20
+    opt.num_test = 6
+    opt.model="test"
+    experiment(opt, game_loader)
