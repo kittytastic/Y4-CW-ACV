@@ -1,3 +1,4 @@
+from typing import Any
 import sys
 sys.path.append("pytorch_CycleGAN_and_pix2pix")
 
@@ -11,13 +12,10 @@ from pytorch_CycleGAN_and_pix2pix.util import html
 from Helpers.video_loader import VideoLoader
 from Helpers.video import IOBase, VideoWriter, VideoReader, DualVideoWriter
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
+from Helpers.cgan import tensor_to_cycle_gan_colour, cycle_gan_to_tensor_colour
 from tqdm import tqdm
 
-def adjust_color(in_image):
-    return (in_image*2.0)-1
 
-def fix_colour_from_cgan(in_image):
-    return (in_image+1)/2
 
 def set_options():
     opt = TestOptions().parse()  # get test options
@@ -34,43 +32,33 @@ def set_options():
     opt.name = "style_monet_pretrained" if opt.name == "monet" else "style_cezanne_pretrained"
     return opt
 
-if __name__=="__main__":
-    print("---------- Basic Style Transfer ---------")
-    USE_WEB = False
 
-    opt = set_options()
-    model = create_model(opt)      # create a model given opt.model and other options
-    model.setup(opt)               # regular setup: load and print networks; create schedulers
+def experiment(opt: Any, video_loader: VideoLoader):
+    results_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))
+    video_name  = f"{opt.name}.mp4"
 
-    webpage = None    
-    if USE_WEB:
-        # create a website
-        web_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))  # define the website directory
-        if opt.load_iter > 0:  # load_iter is 0 by default
-            web_dir = '{:s}_iter{:d}'.format(web_dir, opt.load_iter)
-        print('creating web directory', web_dir)
-        webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
+    # Model + Data setup
+    model = create_model(opt)
+    model.setup(opt)
+    dataset = torch.utils.data.DataLoader(video_loader, num_workers=opt.num_threads, batch_size=opt.batch_size) # type: ignore
+    input_meta = VideoReader(video_loader.video_path)
 
+    # Web Output
+    web_dir = results_dir
+    print('creating web directory', web_dir)
+    webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
 
-    ds = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=adjust_color)
-    dataset = torch.utils.data.DataLoader(ds, num_workers=opt.num_threads, batch_size=opt.batch_size) # type: ignore
-    samples = 0
-    input_meta = VideoReader("../Dataset/Train/Games/Video1.mp4")
-
-    wr = DualVideoWriter("../Dataset/TMP/tmp.mp4", like_video=input_meta)
+    # Video Output
+    wr = DualVideoWriter(os.path.join(results_dir, video_name), like_video=input_meta)
 
     #dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
 
-
+    # Test Model
     model.eval()
     i = 0
-    for data in tqdm(dataset, total = len(input_meta)//opt.batch_size):
-        if i >= opt.num_test:
-            break
-        
-        #if i % 5 == 0:
-        #    print('processing (%04d)-th batch...' % (i))
-        i+=1
+    for data in tqdm(dataset, total = opt.num_test//opt.batch_size):
+        if i >= opt.num_test: break
+        i+=opt.batch_size
         
         # Input
         tensor_image, numpy_image = data[0], data[1]
@@ -80,15 +68,21 @@ if __name__=="__main__":
         
         # Results
         visuals = model.get_current_visuals() 
-        fake_images = fix_colour_from_cgan(visuals["fake"]).detach().cpu()
+        fake_images = cycle_gan_to_tensor_colour(visuals["fake"]).detach().cpu()
         for j in range(opt.batch_size):
             fake_image = tensor_to_openCV(fake_images[j])
             fake_image = fake_image[0:wr.height]
             wr.write_dual_frame(numpy_image[j].numpy(), fake_image)
         
-        if USE_WEB:
-            img_path = model.get_image_paths()
-            save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
+        img_path = model.get_image_paths()
+        save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
     
-    if USE_WEB:
-        webpage.save()  # save the HTML
+    webpage.save()
+
+if __name__=="__main__":
+    print("---------- Basic Style Transfer ---------")
+    opt = set_options()
+
+    ds = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=tensor_to_cycle_gan_colour)
+    opt.num_test = 10
+    experiment(opt, ds)
