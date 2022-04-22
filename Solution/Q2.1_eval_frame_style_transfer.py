@@ -17,6 +17,7 @@ from Helpers.cgan import tensor_to_cycle_gan_colour, cycle_gan_to_tensor_colour
 from tqdm import tqdm
 from collections import OrderedDict
 
+NAME_MAP = {"monet":"paired_photo_to_monet_pretrained", "photo_to_monet":"single_photo_to_monet_pretrained", "monet_to_photo":"single_monet_to_photo_pretrianed", "cezanne": "single_photo_to_cezanne_pretrained"}
 
 def set_options():
     opt = TestOptions().parse()  # get test options
@@ -27,12 +28,20 @@ def set_options():
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     
     opt.batch_size = 2  
-    opt.checkpoints_dir = "./pytorch_CycleGAN_and_pix2pix/checkpoints"
-    opt.model = "cycle_gan"
+    opt.checkpoints_dir = "../Checkpoints/cycleGAN"
+    opt.model = "test"
     opt.no_dropout = True
-    opt.name = "style_monet_pretrained" if opt.name == "monet" else "style_cezanne_pretrained"
     return opt
 
+def set_model_info(opt, model_name):
+    if model_name not in NAME_MAP: raise Exception(f"Unknown model name: {model_name}, choose from {' '.join(opt.name.keys())}")
+    opt.name = NAME_MAP[model_name]
+
+    if "paried" in opt.name:
+        opt.model = "cycle_gan"
+    else:
+        opt.model = "test"
+    return opt
 
 def experiment_full_cycle(opt: Any, game_video_loader: VideoLoader, movie_video_loader: VideoLoader):
     assert(opt.model=="cycle_gan")
@@ -136,5 +145,6 @@ if __name__=="__main__":
     movie_loader = VideoLoader("../Dataset/Train/Movie/Video2.mp4", user_transform=tensor_to_cycle_gan_colour)
     movie_loader.start=20
     opt.num_test = 6
-    opt.model="test"
+    
+    opt = set_model_info(opt, "cezanne")
     experiment(opt, game_loader)
