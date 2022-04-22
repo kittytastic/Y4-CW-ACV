@@ -11,6 +11,7 @@ from pytorch_CycleGAN_and_pix2pix.util import html
 from Helpers.video_loader import VideoLoader
 from Helpers.video import IOBase, VideoWriter, VideoReader, DualVideoWriter
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
+from tqdm import tqdm
 
 def adjust_color(in_image):
     return (in_image*2.0)-1
@@ -62,12 +63,14 @@ if __name__=="__main__":
 
 
     model.eval()
-    for i, data in enumerate(dataset):
+    i = 0
+    for data in tqdm(dataset, total = len(input_meta)//opt.batch_size):
         if i >= opt.num_test:
             break
         
-        if i % 5 == 0:
-            print('processing (%04d)-th batch...' % (i))
+        #if i % 5 == 0:
+        #    print('processing (%04d)-th batch...' % (i))
+        i+=1
         
         # Input
         tensor_image, numpy_image = data[0], data[1]
