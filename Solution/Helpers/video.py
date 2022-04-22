@@ -146,6 +146,28 @@ class VideoWriter(IOBase):
         return f"[Writer] {os.path.split(self.output_name)[-1]}: {w}x{h}@{fps:.2f}\tframe {self.get_pos()}"
 
 
+class DualVideoWriter():
+    def __init__(self, output_name:str, like_video:VideoReader) -> None:
+        self.video_writer = VideoWriter(output_name, like_video=like_video)
+        self.width, self.height = self.video_writer.get_resolution()
+    
+    def write_dual_frame(self, f1, f2):
+        assert(f1.shape[0]==self.height)
+        assert(f1.shape[1]==self.width)
+        assert(f1.shape[2]==3)
+        assert(f2.shape[0]==self.height)
+        assert(f2.shape[1]==self.width)
+        assert(f2.shape[2]==3)
+        half_width, half_height = self.width//2, self.height//2
+        quater_height = half_height//2
+        half_f1 = cv2.resize(f1, (half_width, half_height))
+        half_f2 = cv2.resize(f2, (half_width, half_height))
+
+        new_frame = np.zeros_like(f1)
+        new_frame[quater_height:quater_height+half_height, 0:half_width,:]=half_f1
+        new_frame[quater_height:quater_height+half_height, half_width:self.width,:]=half_f2
+        self.video_writer.write_frame(new_frame)
+
 def _example():
     save_frames = 100
     video = VideoReader('../../Dataset/Train/Games/Video1.mp4')

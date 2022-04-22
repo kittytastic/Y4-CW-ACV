@@ -9,7 +9,7 @@ from pytorch_CycleGAN_and_pix2pix.options.test_options import TestOptions
 from pytorch_CycleGAN_and_pix2pix.util.visualizer import save_images
 from pytorch_CycleGAN_and_pix2pix.util import html
 from Helpers.video_loader import VideoLoader
-from Helpers.video import IOBase, VideoWriter, VideoReader
+from Helpers.video import IOBase, VideoWriter, VideoReader, DualVideoWriter
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
 
 def adjust_color(in_image):
@@ -26,7 +26,7 @@ def set_options():
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     
-    opt.batch_size = 2   
+    opt.batch_size = 4  
     opt.checkpoints_dir = "./pytorch_CycleGAN_and_pix2pix/checkpoints"
     opt.model = "test"
     opt.no_dropout = True
@@ -56,7 +56,7 @@ if __name__=="__main__":
     samples = 0
     input_meta = VideoReader("../Dataset/Train/Games/Video1.mp4")
 
-    wr = VideoWriter("../Dataset/TMP/tmp.mp4", like_video=input_meta)
+    wr = DualVideoWriter("../Dataset/TMP/tmp.mp4", like_video=input_meta)
 
     #dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
 
@@ -81,7 +81,7 @@ if __name__=="__main__":
         for j in range(opt.batch_size):
             fake_image = tensor_to_openCV(fake_images[j])
             fake_image = fake_image[0:wr.height]
-            wr.write_frame(fake_image)
+            wr.write_dual_frame(numpy_image[j].numpy(), fake_image)
         
         if USE_WEB:
             img_path = model.get_image_paths()
