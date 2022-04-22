@@ -18,9 +18,7 @@ def adjust_color(in_image):
 def fix_colour_from_cgan(in_image):
     return (in_image+1)/2
 
-if __name__=="__main__":
-    print("---------- Basic Style Transfer ---------")
-
+def set_options():
     opt = TestOptions().parse()  # get test options
     # hard-code some parameters for test
     opt.num_threads = 0   # test code only supports num_threads = 0
@@ -28,7 +26,17 @@ if __name__=="__main__":
     opt.serial_batches = True  # disable data shuffling; comment this line if results on randomly chosen images are needed.
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
+    
     opt.checkpoints_dir = "./pytorch_CycleGAN_and_pix2pix/checkpoints"
+    opt.model = "test"
+    opt.no_dropout = True
+    opt.name = "style_monet_pretrained" if opt.name == "monet" else "style_cezanne_pretrained"
+    return opt
+
+if __name__=="__main__":
+    print("---------- Basic Style Transfer ---------")
+
+    opt = set_options()
     model = create_model(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
 
