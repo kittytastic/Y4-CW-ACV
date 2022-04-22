@@ -14,7 +14,7 @@ from Helpers.video import IOBase, VideoWriter, VideoReader, DualVideoWriter
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
 from Helpers.cgan import tensor_to_cycle_gan_colour, cycle_gan_to_tensor_colour
 from tqdm import tqdm
-
+from collections import OrderedDict
 
 
 def set_options():
@@ -62,27 +62,33 @@ def experiment(opt: Any, video_loader: VideoLoader):
         
         # Input
         tensor_image, numpy_image = data[0], data[1]
-        cgan_data = {"A": tensor_image, "A_paths":["nopath"]*opt.batch_size}
+        image_names = [f"{video_loader.video_path.split('.')[-2]}:    frame {j}." for j in range(i-opt.batch_size, i)]
+        cgan_data = {"A": tensor_image, "A_paths":image_names}
         model.set_input(cgan_data) 
         model.test()
         
         # Results
         visuals = model.get_current_visuals() 
+        
+        # Save Results
         fake_images = cycle_gan_to_tensor_colour(visuals["fake"]).detach().cpu()
         for j in range(opt.batch_size):
             fake_image = tensor_to_openCV(fake_images[j])
             fake_image = fake_image[0:wr.height]
             wr.write_dual_frame(numpy_image[j].numpy(), fake_image)
-        
-        img_path = model.get_image_paths()
-        save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
+            
+            visuals_splice = OrderedDict()
+            visuals_splice["real"] = visuals["real"][j].unsqueeze(0)
+            visuals_splice["fake"] = visuals["fake"][j].unsqueeze(0)
+            save_images(webpage, visuals_splice, [image_names[j]], aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
     
     webpage.save()
 
 if __name__=="__main__":
-    print("---------- Basic Style Transfer ---------")
+    print("---------- Q2.1 Frame Transfer - Eval ---------")
     opt = set_options()
 
+    print("\n\n---------- Q2.1 Frame Transfer - Eval ---------")
     ds = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=tensor_to_cycle_gan_colour)
     opt.num_test = 10
     experiment(opt, ds)
