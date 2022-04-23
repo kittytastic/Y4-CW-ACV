@@ -1,0 +1,21 @@
+name: ACV
+channels:
+- pytorch
+- conda-forge
+- defaults
+dependencies:
+- python=3.8
+- pytorch
+- torchvision
+- cudatoolkit=11.3
+- opencv
+- scipy
+- pip
+- pip:
+  - dominate==2.4.0
+  - Pillow==6.1.0
+  - numpy
+  - visdom==0.1.8
+  - parse
+  - tqdm
+  - wandb
