@@ -34,8 +34,7 @@ def set_options():
     return opt
 
 def set_model_info(opt, model_name):
-    if model_name not in NAME_MAP: raise Exception(f"Unknown model name: {model_name}, choose from {' '.join(opt.name.keys())}")
-    opt.name = NAME_MAP[model_name]
+    if model_name in NAME_MAP: opt.name = NAME_MAP[model_name]
 
     if "paried" in opt.name:
         opt.model = "cycle_gan"
@@ -146,5 +145,6 @@ if __name__=="__main__":
     movie_loader.start=20
     opt.num_test = 6
     
-    opt = set_model_info(opt, "cezanne")
+    #opt = set_model_info(opt, "cezanne")
+    opt = set_model_info(opt, opt.name)
     experiment(opt, game_loader)
