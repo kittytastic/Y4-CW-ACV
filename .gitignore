@@ -6,3 +6,4 @@ Dataset/*
 **/__pycache__/**
 **/results/**
 Solution/checkpoints/**
+*.out
