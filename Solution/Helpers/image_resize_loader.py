@@ -73,4 +73,4 @@ class ImageStandardizeDataLoader(torch.utils.data.Dataset): #type: ignore
         if self.post_resize_transform is not None:
             img = self.post_resize_transform(img)
 
-        return {"size":size, "image":img}
+        return {"size":torch.tensor(size), "image":img}
