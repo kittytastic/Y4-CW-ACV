@@ -53,7 +53,7 @@ if __name__=="__main__":
     model = model.to(device)
 
     print("\nProcessing Games")
-    process_directory(device, model, "output-{id}.json", "output-{id}.png", "game-output-{id}.png", "../Dataset/Generated/HumanPatches/Games", args.outdir) 
+    process_directory(device, model, "output-{id}.json", "output-{id}.jpg", "game-output-{id}.jpg", "../Dataset/Generated/HumanPatches/Games", args.outdir) 
     print("Processing Movies")
-    process_directory(device, model, "output-{id}.json", "output-{id}.png", "movie-output-{id}.png", "../Dataset/Generated/HumanPatches/Movie", args.outdir)
+    process_directory(device, model, "output-{id}.json", "output-{id}.jpg", "movie-output-{id}.jpg", "../Dataset/Generated/HumanPatches/Movie", args.outdir)
         

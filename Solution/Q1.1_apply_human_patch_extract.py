@@ -67,8 +67,8 @@ def full_mode(workers:int, batch_size: int, model:Any):
     game_videos = ["Video1.mp4", "Video2.mp4"]
     movie_videos = ["Video1.mp4", "Video2.mp4", "Video3.mp4", "Video4.mp4", "Video5.mp4", "Video6.mp4", "Video7.mp4", "Video8.mp4", "Video9.mp4"]
 
-    game_outstream = ImageDirWriter("../Dataset/Generated/HumanPatches/Games/Patches")
-    movie_outstream = ImageDirWriter("../Dataset/Generated/HumanPatches/Movie/Patches")
+    game_outstream = ImageDirWriter("../Dataset/Generated/HumanPatches/Games/Patches", file_type="jpg")
+    movie_outstream = ImageDirWriter("../Dataset/Generated/HumanPatches/Movie/Patches", file_type="jpg")
     
     game_json_outstream = JsonDirWriter("../Dataset/Generated/HumanPatches/Games/Keypoints")
     movie_json_outstream = JsonDirWriter("../Dataset/Generated/HumanPatches/Movie/Keypoints")
