@@ -27,7 +27,7 @@ def set_options():
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     
-    opt.batch_size = 2  
+    opt.batch_size = 4  
     opt.checkpoints_dir = "../Checkpoints/cycleGAN"
     opt.model = "test"
     opt.no_dropout = True
@@ -36,7 +36,7 @@ def set_options():
 def set_model_info(opt, model_name):
     if model_name in NAME_MAP: opt.name = NAME_MAP[model_name]
 
-    if "paried" in opt.name:
+    if "paired" in opt.name:
         opt.model = "cycle_gan"
     else:
         opt.model = "test"
@@ -57,6 +57,11 @@ def experiment_full_cycle(opt: Any, game_video_loader: VideoLoader, movie_video_
     print('creating web directory', web_dir)
     webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
 
+    input_meta = VideoReader(game_video_loader.video_path)
+    game_vw = DualVideoWriter(os.path.join(results_dir, "game.mp4"), like_video=input_meta)
+    input_meta = VideoReader(movie_video_loader.video_path)
+    movie_vw = DualVideoWriter(os.path.join(results_dir, "movie.mp4"), like_video=input_meta)
+    
     # Test Model
     model.eval()
     i = 0
@@ -74,11 +79,16 @@ def experiment_full_cycle(opt: Any, game_video_loader: VideoLoader, movie_video_
         # Results
         visuals = model.get_current_visuals() 
         
-        # Save Results 
+        # Save Results f
         for j in range(opt.batch_size):    
             visuals_splice = OrderedDict()
-            for k in ["real_A", "fake_A", "rec_A", "real_B", "fake_B", "rec_B"]:
+            for k in ["real_A", "fake_B", "rec_A", "real_B", "fake_A", "rec_B"]:
                 visuals_splice[k] = visuals[k][j].unsqueeze(0)
+            
+            for fake_k, real_k, vw in [("fake_B", "real_A", game_vw), ("fake_A", "real_B", movie_vw)]:
+                fake_image = tensor_to_openCV(cycle_gan_to_tensor_colour(visuals_splice[fake_k]).squeeze().detach().cpu())[0:vw.height]
+                real_image = tensor_to_openCV(cycle_gan_to_tensor_colour(visuals_splice[real_k]).squeeze().detach().cpu())[0:vw.height]
+                vw.write_dual_frame(real_image, fake_image)
             save_images(webpage, visuals_splice, [image_names[j]], aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
     
     webpage.save()
@@ -143,8 +153,9 @@ if __name__=="__main__":
     game_loader = VideoLoader("../Dataset/Train/Games/Video1.mp4", user_transform=tensor_to_cycle_gan_colour)
     movie_loader = VideoLoader("../Dataset/Train/Movie/Video2.mp4", user_transform=tensor_to_cycle_gan_colour)
     movie_loader.start=20
-    opt.num_test = 6
+    #opt.num_test = 6
     
     #opt = set_model_info(opt, "cezanne")
     opt = set_model_info(opt, opt.name)
-    experiment(opt, game_loader)
+    #experiment(opt, game_loader)
+    experiment_full_cycle(opt, game_loader, movie_loader)
