@@ -66,6 +66,13 @@ class ImageDirReader(IOBase):
             return cv2.imread(full_path) 
         else:
             raise StopIteration
+    
+    def __getitem__(self, idx):
+        if idx<len(self.eligable_files) and idx>=0:
+            full_path = os.path.join(self.dir_path, self.eligable_files[idx])
+            return cv2.imread(full_path) 
+        else:
+            raise IndexError
 
     def seek(self):
         self.pos = 0
