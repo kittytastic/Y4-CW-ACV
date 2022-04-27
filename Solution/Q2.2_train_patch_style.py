@@ -22,7 +22,9 @@ import torch
 def map_data_to_required(data_batch):
     return {"A": data_batch["A_image"], "B": data_batch["B_image"], "A_paths": "none", "B_paths":"none"}
 
-def train(opt, data_loader):
+def train(opt, data_loader, target_time):
+    start_time = time.time()
+    end_time = start_time + target_time*3600 - 5*60
     opt.save_latest_freq = 1000
     opt.save_epoch_freq = 1
     opt.display_id = -1
@@ -39,12 +41,16 @@ def train(opt, data_loader):
     total_iters = 0                # the total number of training iterations
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
+        if time.time()>end_time:
+            break
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
         epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
         visualizer.reset()              # reset the visualizer: make sure it saves the results to HTML at least once every epoch
         model.update_learning_rate()    # update learning rates in the beginning of every epoch.
         for i, data in enumerate(dataset):  # inner loop within one epoch
+            if time.time()>end_time:
+                break
             data=map_data_to_required(data)
             iter_start_time = time.time()  # timer for computation per iteration
             if total_iters % opt.print_freq == 0:
@@ -80,6 +86,9 @@ def train(opt, data_loader):
 
         print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
 
+    model.save_networks('latest')
+    print("Finishing run, model saved")
+
 def image_loader_tf(img):
     img = openCV_to_tensor(img)
     img = tensor_to_cycle_gan_colour(img)
@@ -96,8 +105,11 @@ if __name__=="__main__":
     dl_B = ImageStandardizeDataLoader("../Dataset/Generated/HumanPatches/Movie/Patches", 256, 256, resize_mode=mode, post_resize_transfrom=image_loader_tf)
     dl = Custom_AB_Loader(dl_A, dl_B)
 
-    
+    target_hrs = opt.init_gain
+    opt.init_gain = 0.02
+    assert(target_hrs!=opt.init_gain)
+    print(f"Targeting: {target_hrs}hrs of training")
     ds = torch.utils.data.DataLoader(dl, num_workers=opt.num_threads, batch_size=opt.batch_size, shuffle=True) # type: ignore
 
-    train(opt, ds)
+    train(opt, ds, target_hrs)
    
