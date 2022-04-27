@@ -22,6 +22,8 @@ def inject_time_arg(opt):
     print(f"Targeting: {target_hrs} hrs of training")
     return opt, target_hrs
 
+
+# Adapted from: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/train.py
 def custom_cgan_train(opt, data_loader, target_time:float, map_data_to_required:Callable[[Any], Any]):
     start_time = time.time()
     end_time = start_time + target_time*3600 - 5*60
