@@ -80,6 +80,11 @@ def train(opt, data_loader):
 
         print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
 
+def image_loader_tf(img):
+    img = openCV_to_tensor(img)
+    img = tensor_to_cycle_gan_colour(img)
+    return img
+
 if __name__=="__main__":
 
     opt = TrainOptions().parse()   # get training options
@@ -87,8 +92,8 @@ if __name__=="__main__":
     mode = "stretch"
     if opt.dataroot == "pad": mode = "pad"
 
-    dl_A = ImageStandardizeDataLoader("../Dataset/Generated/HumanPatches/Games/Patches", 256, 256, resize_mode=mode, post_resize_transfrom=openCV_to_tensor)
-    dl_B = ImageStandardizeDataLoader("../Dataset/Generated/HumanPatches/Movie/Patches", 256, 256, resize_mode=mode, post_resize_transfrom=openCV_to_tensor)
+    dl_A = ImageStandardizeDataLoader("../Dataset/Generated/HumanPatches/Games/Patches", 256, 256, resize_mode=mode, post_resize_transfrom=image_loader_tf)
+    dl_B = ImageStandardizeDataLoader("../Dataset/Generated/HumanPatches/Movie/Patches", 256, 256, resize_mode=mode, post_resize_transfrom=image_loader_tf)
     dl = Custom_AB_Loader(dl_A, dl_B)
 
     
