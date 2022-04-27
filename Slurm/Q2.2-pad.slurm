@@ -13,7 +13,7 @@ conda init
 conda activate ACV
 
 
-(cd ../Solution/; python ./Q2.2_train_patch_style.py --dataroot pad --batch_size 4 --name patch_pad --use_wandb) &
+(cd ../Solution/; python ./Q2.2_train_patch_style.py --dataroot pad --batch_size 4 --name patch_pad --use_wandb --init_gain 12) &
 pids[0]=$!
 
 
