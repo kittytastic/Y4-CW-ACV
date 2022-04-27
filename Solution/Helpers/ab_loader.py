@@ -44,7 +44,6 @@ class Aligned_Class_Unaligned_Data_AB_Loader:
         self.A_patten = A_patten
         self.B_patten = B_patten
         self.classes = [d for d in os.listdir(self.dir) if os.path.isdir(os.path.join(self.dir, d))]
-        print(self.classes)
 
         self.files:Dict[str, Dict[str, List[str]]] = {}
         self.files["A"] = {c: all_files_that_match_patten(os.path.join(dir, c), self.A_patten) for c in self.classes}
@@ -52,15 +51,10 @@ class Aligned_Class_Unaligned_Data_AB_Loader:
         self.summary:Dict[str, Dict[str, int]] = {}
         self.summary["A"] = summary_big_dict(self.files['A'])
         self.summary["B"] = summary_big_dict(self.files['B'])
-        print(f"A: {self.summary['A']}")
-        print(f"B: {self.summary['B']}")
         self.total_len = {k: sum(self.summary[k].values()) for k in ["A", "B"]}
-        print(self.total_len)
         self.primary_ds = "A" if self.total_len["A"]>self.total_len["B"] else "B"
         self.secondary_ds = "B" if self.total_len["A"]>self.total_len["B"] else "A"
 
-        print(f"Primary DS: {self.primary_ds}")
-        print(f"Secondary DS: {self.secondary_ds}")
 
     def get_index_class(self, idx):
         for c in self.classes:
@@ -78,8 +72,6 @@ class Aligned_Class_Unaligned_Data_AB_Loader:
         idxs[self.secondary_ds] = random.randint(0, self.summary[self.secondary_ds][c]-1)
 
          
-        print(f"A: {c}: {idxs['A']}")
-        print(f"B: {c}: {idxs['B']}")
         img_paths = {f"{k}_paths": os.path.join(self.dir, c, self.files[k][c][idxs[k]]) for k in ["A", "B"]}
         imgs = {k:cv2.imread(img_paths[f"{k}_paths"]) for k in ["A", "B"]}
         imgs_sizes = {f"{k}_shape":tensor((imgs[k].shape[0], imgs[k].shape[1])) for k in ["A", "B"]}
