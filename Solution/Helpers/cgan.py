@@ -7,6 +7,8 @@ from pytorch_CycleGAN_and_pix2pix.options.test_options import TestOptions
 from pytorch_CycleGAN_and_pix2pix.options.train_options import TrainOptions
 from pytorch_CycleGAN_and_pix2pix.util.visualizer import save_images, Visualizer
 import time
+import argparse
+import math
 
 def tensor_to_cycle_gan_colour(in_image):
     return (in_image*2.0)-1
@@ -22,6 +24,19 @@ def inject_time_arg(opt):
     print(f"Targeting: {target_hrs} hrs of training")
     return opt, target_hrs
 
+def get_default_test_opt():
+    return  argparse.Namespace(aspect_ratio=1.0, batch_size=1, checkpoints_dir='./checkpoints', crop_size=256, dataroot='non', dataset_mode='single', direction='AtoB', display_winsize=256, epoch='latest', eval=False, gpu_ids=[0], init_gain=0.02, init_type='normal', input_nc=3, isTrain=False, load_iter=0, load_size=256, max_dataset_size=math.inf, model='test', model_suffix='', n_layers_D=3, name='experiment_name', ndf=64, netD='basic', netG='resnet_9blocks', ngf=64, no_dropout=False, no_flip=False, norm='instance', num_test=50, num_threads=4, output_nc=3, phase='test', preprocess='resize_and_crop', results_dir='./results/', serial_batches=False, suffix='', use_wandb=False, verbose=False)
+
+def apply_normal_test_opt(opt):
+    opt.num_threads = 0 
+    opt.batch_size = 1  
+    opt.no_flip = True
+    opt.eval = True
+    opt.no_dropout = True
+    opt.checkpoints_dir = "../Checkpoints/cycleGAN"
+    opt.display_id = -1
+
+    return opt
 
 # Adapted from: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/train.py
 def custom_cgan_train(opt, data_loader, target_time:float, map_data_to_required:Callable[[Any], Any]):

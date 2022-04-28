@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import math
 import os
 from typing import Any, Dict, List, Optional
 import torch
@@ -17,7 +18,7 @@ from Helpers.image_resize_loader import ImageStandardizeDataLoader, ImageStandar
 from Helpers.video import VideoReader
 from Helpers.ab_loader import Custom_AB_Loader, Aligned_Class_Unaligned_Data_AB_Loader
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
-from Helpers.cgan import tensor_to_cycle_gan_colour, cycle_gan_to_tensor_colour, custom_cgan_train, inject_time_arg
+from Helpers.cgan import tensor_to_cycle_gan_colour, cycle_gan_to_tensor_colour, custom_cgan_train, inject_time_arg, get_default_test_opt, apply_normal_test_opt
 from Models.keypointrcnn import KeyPointRCNN
 from Models.maskrcnn import MaskRCNN
 import torch
@@ -28,6 +29,7 @@ import cv2
 import json
 import numpy as np
 
+from io import StringIO 
 import shutil
 from Helpers.state import StateTemplate, State, StageState
 
@@ -213,6 +215,53 @@ def consolidate_rccn_outputs(state: StageState, props:Dict[str, Any], scratch_di
         with open(os.path.join(out_dir, "data", f"frame-{current_frame}.json"), "w+") as f: json.dump(out_data, f)
         
         if current_frame%30==0: state["current_frame"]=current_frame
+    state["finished"]=True
+
+
+class DevNull(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        del self._stringio
+        sys.stdout = self._stdout
+
+def apply_background_model(state: StageState, props: Dict[str, Any], scratch_dir):
+    if state["finished"]: return
+    current_frame = state["current_frame"]
+    total_frames = props["total_frames"]
+    in_dir = os.path.join(scratch_dir, "raw_frames")
+    out_dir = os.path.join(scratch_dir, "background")
+    
+    opt = get_default_test_opt()
+    opt = apply_normal_test_opt(opt)
+    opt.name = props["background_model"]
+    opt.epoch = props["background_model_epoch"]
+
+    with DevNull():
+        model = create_model(opt)
+        model.setup(opt)
+
+    pbar = trange(current_frame, total_frames)
+    pbar.set_description("Running Consolidate")
+    for current_frame in pbar:
+        frame_cv = cv2.imread(os.path.join(in_dir, f"frame-{current_frame}.jpg"))
+        frame_tensor = openCV_to_tensor(frame_cv).unsqueeze(0)
+        frame_cgan = tensor_to_cycle_gan_colour(frame_tensor)
+
+        model.set_input({"A": frame_cgan, "A_paths": [""]}) 
+        model.test()
+        
+        # Results
+        bg_cgan = model.get_current_visuals()["fake"][0]
+        bg_tensor = cycle_gan_to_tensor_colour(bg_cgan).squeeze()
+        bg_cv = tensor_to_openCV(bg_tensor) 
+        
+        cv2.imwrite(os.path.join(out_dir, f"frame-{current_frame}.jpg"), bg_cv)
+        if current_frame%5==0: state["current_frame"]=current_frame
+    state["finished"]=True
+
 
 
 
@@ -220,7 +269,12 @@ def make_props(video_path: str):
     video_reader = VideoReader(video_path)
     total_frames = len(video_reader)
 
-    return {"total_frames":total_frames, "debug_mask_rcnn": True}
+    return {
+        "total_frames":total_frames,
+        "debug_mask_rcnn": True,
+        "background_model":"bg",
+        "background_model_epoch":"38"
+        }
 
 if __name__=="__main__":
     # Find Patches
@@ -239,7 +293,7 @@ if __name__=="__main__":
     #   human-{frame}-{entity}.jpg
     #   mask-{frame}-{entity}.jpg
     print("------ Q2.3 - Apply to test video ------")
-    
+
     parser = argparse.ArgumentParser(description='Extract Human Patches')
     parser.add_argument('-i', '--input', type=str,help='Input video', default="../Dataset/Test/Video1.mp4")
     parser.add_argument('-s', '--scratch_dir', type=str, help='Scratch Directory', default="../Dataset/Test/Video1")
@@ -255,6 +309,7 @@ if __name__=="__main__":
     st.register_stage("get_patches", {"current_frame": 0, "finished": False})
     st.register_stage("get_masks", {"current_frame": 0, "finished": False})
     st.register_stage("consolidate", {"current_frame": 0, "finished": False})
+    st.register_stage("background", {"current_frame": 0, "finished": False})
 
     state = State(st, os.path.join(args.scratch_dir, "state.json"))
     props = make_props(args.input)
@@ -275,5 +330,6 @@ if __name__=="__main__":
     state.save(pretty_print=True)
     print("Run consolidate:  ✔️")
 
+    apply_background_model(state["background"], props, args.scratch_dir)
 
     pass
