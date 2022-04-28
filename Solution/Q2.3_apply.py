@@ -133,6 +133,7 @@ def get_masks(state: StageState, props:Dict[str, Any], device: Any, scratch_dir:
 
             mask_bw = np.full(masks[i].shape, 255, dtype=np.uint8)
             mask_bw *= masks[i]
+            if mask_bw.shape[0]==1 or mask_bw.shape[1]==1: raise Exception("Panic")
             cv2.imwrite(os.path.join(out_dir, "masks", f"frame-{current_frame}-entity-{entity_count}.png"), mask_bw)
             
             entity_count+=1
@@ -303,7 +304,60 @@ def apply_patch_tf(state: StageState, props: Dict[str, Any], scratch_dir):
         if current_frame%5==0: state["current_frame"]=current_frame
     state["finished"] = True
 
+def basic_blend(current_frame: int, props:Dict[str, Any], scratch_dir: str)->np.ndarray:
+    bg_dir = os.path.join(scratch_dir, "background")
+    patch_dir = os.path.join(scratch_dir, "consolidated_rcnn")
+    style_patch_dir = os.path.join(scratch_dir, "style_patches")
 
+    bg = cv2.imread(os.path.join(bg_dir, f"frame-{current_frame}.jpg"))
+    with open(os.path.join(patch_dir, "data", f"frame-{current_frame}.json")) as f: frame_data = json.load(f)
+
+    for entity, entity_data in enumerate(frame_data):
+        x1, y1, x2, y2 = entity_data["box"]
+        entity_img = cv2.imread(os.path.join(style_patch_dir, f"frame-{current_frame}-entity-{entity}.jpg"))
+        bg[y1:y2, x1:x2] = entity_img
+    
+    return bg
+
+def mask_blend(current_frame: int, props:Dict[str, Any], scratch_dir: str)->np.ndarray:
+    bg_dir = os.path.join(scratch_dir, "background")
+    patch_dir = os.path.join(scratch_dir, "consolidated_rcnn")
+    style_patch_dir = os.path.join(scratch_dir, "style_patches")
+
+    bg_cv = cv2.imread(os.path.join(bg_dir, f"frame-{current_frame}.jpg"))
+    with open(os.path.join(patch_dir, "data", f"frame-{current_frame}.json")) as f: frame_data = json.load(f)
+    for entity, entity_data in enumerate(frame_data):
+        #print(f"Frame: {current_frame}  entity: {entity}")
+        x1, y1, x2, y2 = entity_data["box"]
+        has_mask = entity_data["mask_rcnn"] is not False
+        entity_img = cv2.imread(os.path.join(style_patch_dir, f"frame-{current_frame}-entity-{entity}.jpg"))
+        if not has_mask:
+            bg_cv[y1:y2, x1:x2] = entity_img
+        else:
+            full_entity = np.zeros_like(bg_cv)
+            full_entity[y1:y2, x1:x2] = entity_img
+            mask_raw = cv2.imread(os.path.join(patch_dir, "masks", f"frame-{current_frame}-entity-{entity}.png"))
+            mask_raw = np.logical_not(np.logical_not(mask_raw))
+            mask = np.full((bg_cv.shape[0], bg_cv.shape[1], 3), False, dtype=np.bool8)
+            mask[0:mask_raw.shape[0], 0: mask_raw.shape[1]] = mask_raw
+            np.putmask(bg_cv, mask, full_entity)
+           
+    return bg_cv
+
+def blend_bg_patch(state: StageState, props: Dict[str, Any], scratch_dir:str, mode:str):
+    if state["finished"]: return
+    current_frame = state["current_frame"]
+    out_dir = os.path.join(scratch_dir, "blended_frames")
+    total_frames = props["total_frames"]
+    
+    pbar = trange(current_frame, total_frames)
+    pbar.set_description("Running blend frame")
+    for current_frame in pbar:
+        if mode=="mask":new_frame = mask_blend(current_frame, props, scratch_dir)
+        else: new_frame = basic_blend(current_frame, props, scratch_dir)
+        cv2.imwrite(os.path.join(out_dir, f"frame-{current_frame}.jpg"), new_frame) 
+        if current_frame%10==0: state["current_frame"]=current_frame
+    state["finished"]=True
 
 def make_props(video_path: str):
     video_reader = VideoReader(video_path)
@@ -353,6 +407,7 @@ if __name__=="__main__":
     st.register_stage("consolidate", {"current_frame": 0, "finished": False})
     st.register_stage("background", {"current_frame": 0, "finished": False})
     st.register_stage("patch_style", {"current_frame": 0, "finished": False})
+    st.register_stage("blend_frame", {"current_frame": 0, "finished": False})
 
     state = State(st, os.path.join(args.scratch_dir, "state.json"))
     props = make_props(args.input)
@@ -381,4 +436,7 @@ if __name__=="__main__":
     state.save(pretty_print=True)
     print("Run Patch Style:  ✔️")
 
-    pass
+    blend_bg_patch(state["blend_frame"], props, args.scratch_dir, "mask")
+    state.save(pretty_print=True)
+    print("Run Frame Blend:  ✔️")
+
