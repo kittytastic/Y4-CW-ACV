@@ -15,7 +15,7 @@ from pytorch_CycleGAN_and_pix2pix.util.visualizer import save_images
 from pytorch_CycleGAN_and_pix2pix.util import html
 
 from Helpers.image_resize_loader import ImageStandardizeDataLoader, ImageStandardizer
-from Helpers.video import VideoReader
+from Helpers.video import VideoReader, VideoWriter, DualVideoWriter
 from Helpers.ab_loader import Custom_AB_Loader, Aligned_Class_Unaligned_Data_AB_Loader
 from Helpers.images import tensor_to_openCV, openCV_to_tensor
 from Helpers.cgan import tensor_to_cycle_gan_colour, cycle_gan_to_tensor_colour, custom_cgan_train, inject_time_arg, get_default_test_opt, apply_normal_test_opt
@@ -359,6 +359,29 @@ def blend_bg_patch(state: StageState, props: Dict[str, Any], scratch_dir:str, mo
         if current_frame%10==0: state["current_frame"]=current_frame
     state["finished"]=True
 
+def save_video(state: StageState, props: Dict[str, Any], scratch_dir:str, input_video:str):
+    if state["finished"]: return
+    current_frame = state["current_frame"]
+    total_frames = props["total_frames"]
+    video_reader = VideoReader(input_video)
+    w, h = video_reader.get_resolution()
+    normal_writer = VideoWriter(os.path.join(scratch_dir, "output", "final.mp4"), like_video=video_reader)
+    dual_writer = DualVideoWriter(os.path.join(scratch_dir, "output", "compare.mp4"), like_video=video_reader)
+    
+    pbar = trange(current_frame, total_frames)
+    pbar.set_description("Running build video")
+    for current_frame in pbar:
+        original_frame = cv2.imread(os.path.join(scratch_dir, "raw_frames", f"frame-{current_frame}.jpg"))
+        new_frame = cv2.imread(os.path.join(scratch_dir, "blended_frames", f"frame-{current_frame}.jpg"))
+        original_frame = original_frame[0:h, 0:w, :]
+        new_frame = new_frame[0:h, 0:w, :]
+        normal_writer.write_frame(new_frame)
+        dual_writer.write_dual_frame(original_frame, new_frame)
+
+        if current_frame>600:
+            break
+    state["finished"]=True
+
 def make_props(video_path: str):
     video_reader = VideoReader(video_path)
     total_frames = len(video_reader)
@@ -408,6 +431,7 @@ if __name__=="__main__":
     st.register_stage("background", {"current_frame": 0, "finished": False})
     st.register_stage("patch_style", {"current_frame": 0, "finished": False})
     st.register_stage("blend_frame", {"current_frame": 0, "finished": False})
+    st.register_stage("build_video", {"current_frame": 0, "finished": False})
 
     state = State(st, os.path.join(args.scratch_dir, "state.json"))
     props = make_props(args.input)
@@ -439,4 +463,6 @@ if __name__=="__main__":
     blend_bg_patch(state["blend_frame"], props, args.scratch_dir, "mask")
     state.save(pretty_print=True)
     print("Run Frame Blend:  ✔️")
+
+    save_video(state["build_video"], props, args.scratch_dir, args.input)
 
