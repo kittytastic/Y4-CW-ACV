@@ -55,6 +55,15 @@ class Aligned_Class_Unaligned_Data_AB_Loader:
         self.primary_ds = "A" if self.total_len["A"]>self.total_len["B"] else "B"
         self.secondary_ds = "B" if self.total_len["A"]>self.total_len["B"] else "A"
 
+    def get_random_indices_of_class(self, class_idx:int, count:int):
+        idx_start = 0
+        for i in range(class_idx):
+            idx_start+=self.summary[self.primary_ds][self.classes[i]]
+        
+        indices = [idx_start+random.randint(0, self.summary[self.primary_ds][self.classes[class_idx]]-1) for _ in range(count)]
+
+        return indices
+
 
     def get_index_class(self, idx):
         for c in self.classes:
