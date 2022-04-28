@@ -244,7 +244,7 @@ def apply_background_model(state: StageState, props: Dict[str, Any], scratch_dir
         model.setup(opt)
 
     pbar = trange(current_frame, total_frames)
-    pbar.set_description("Running Consolidate")
+    pbar.set_description("Running background")
     for current_frame in pbar:
         frame_cv = cv2.imread(os.path.join(in_dir, f"frame-{current_frame}.jpg"))
         frame_tensor = openCV_to_tensor(frame_cv).unsqueeze(0)
@@ -262,6 +262,46 @@ def apply_background_model(state: StageState, props: Dict[str, Any], scratch_dir
         if current_frame%5==0: state["current_frame"]=current_frame
     state["finished"]=True
 
+def apply_patch_tf(state: StageState, props: Dict[str, Any], scratch_dir):
+    if state["finished"]: return
+    current_frame = state["current_frame"]
+    total_frames = props["total_frames"]
+    in_dir = os.path.join(scratch_dir, "consolidated_rcnn")
+    out_dir = os.path.join(scratch_dir, "style_patches")
+
+    image_s = ImageStandardizer(256, 256, resize_mode="pad")
+    
+    opt = get_default_test_opt()
+    opt = apply_normal_test_opt(opt)
+    opt.name = props["patch_model"]
+    opt.epoch = props["patch_model_epoch"]
+
+    with DevNull():
+        model = create_model(opt)
+        model.setup(opt)
+
+    pbar = trange(current_frame, total_frames)
+    pbar.set_description("Running patch style")
+    for current_frame in pbar:
+        with open(os.path.join(in_dir, "data", f"frame-{current_frame}.json"), "r") as f: frame_data = json.load(f)
+        for entity in range(len(frame_data)):
+            frame_cv = cv2.imread(os.path.join(in_dir, "patch", f"frame-{current_frame}-entity-{entity}.jpg"))
+            frame_sd, original_size = image_s.standardize_size(frame_cv)
+            frame_tensor = openCV_to_tensor(frame_sd).unsqueeze(0)
+            frame_cgan = tensor_to_cycle_gan_colour(frame_tensor)
+
+            model.set_input({"A": frame_cgan, "A_paths": [""]}) 
+            model.test()
+            
+            # Results
+            bg_cgan = model.get_current_visuals()["fake"][0]
+            bg_tensor = cycle_gan_to_tensor_colour(bg_cgan).squeeze()
+            bg_cv = tensor_to_openCV(bg_tensor) 
+            bg_sd = image_s.restore_size(bg_cv, original_size)
+            
+            cv2.imwrite(os.path.join(out_dir, f"frame-{current_frame}-entity-{entity}.jpg"), bg_sd)
+        if current_frame%5==0: state["current_frame"]=current_frame
+    state["finished"] = True
 
 
 
@@ -273,7 +313,9 @@ def make_props(video_path: str):
         "total_frames":total_frames,
         "debug_mask_rcnn": True,
         "background_model":"bg",
-        "background_model_epoch":"38"
+        "background_model_epoch":"38",
+        "patch_model":"patch",
+        "patch_model_epoch":"latest"
         }
 
 if __name__=="__main__":
@@ -310,6 +352,7 @@ if __name__=="__main__":
     st.register_stage("get_masks", {"current_frame": 0, "finished": False})
     st.register_stage("consolidate", {"current_frame": 0, "finished": False})
     st.register_stage("background", {"current_frame": 0, "finished": False})
+    st.register_stage("patch_style", {"current_frame": 0, "finished": False})
 
     state = State(st, os.path.join(args.scratch_dir, "state.json"))
     props = make_props(args.input)
@@ -331,5 +374,11 @@ if __name__=="__main__":
     print("Run consolidate:  ✔️")
 
     apply_background_model(state["background"], props, args.scratch_dir)
+    state.save(pretty_print=True)
+    print("Run Background:  ✔️")
+    
+    apply_patch_tf(state["patch_style"], props, args.scratch_dir)
+    state.save(pretty_print=True)
+    print("Run Patch Style:  ✔️")
 
     pass
