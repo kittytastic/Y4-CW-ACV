@@ -46,9 +46,10 @@ class State:
     def update_fast(self, stage:str, key:str, value:Any):
         self.state[stage][key] = value 
 
-    def save(self):
+    def save(self, pretty_print:bool = False):
         with open(self.store_path, "w+") as f :
-            s = json.dumps(self.state)
+            indent = 4 if pretty_print else None
+            s = json.dumps(self.state, indent=indent)
             f.write(s)
 
     def restore(self, path:str):
