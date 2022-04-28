@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 import torch
 import sys
 from Helpers.torch import init_torch
@@ -28,6 +28,7 @@ import cv2
 import json
 import numpy as np
 
+import shutil
 from Helpers.state import StateTemplate, State, StageState
 
 def turn_video_to_frames(state: StageState, video_path: str, scratch_dir: str):
@@ -102,18 +103,15 @@ def get_masks(state: StageState, props:Dict[str, Any], device: Any, scratch_dir:
 
     model = MaskRCNN(device)
 
-
-    frame_cv = cv2.imread(os.path.join(in_dir, f"frame-{current_frame}.jpg"))
-    frame_tensor = openCV_to_tensor(frame_cv).unsqueeze(0)
-    frame_results = model.process_frames(frame_tensor)[0]
-
-    
-    boxes, labels, masks, scores = frame_results["boxes"], frame_results["labels"], frame_results["masks"], frame_results["scores"]
-    
-    
     pbar = trange(current_frame, total_frames)
     pbar.set_description("Running Keypoint RCNN")
     for current_frame in pbar:
+        frame_cv = cv2.imread(os.path.join(in_dir, f"frame-{current_frame}.jpg"))
+        frame_tensor = openCV_to_tensor(frame_cv).unsqueeze(0)
+        frame_results = model.process_frames(frame_tensor)[0]
+        
+        boxes, labels, masks, scores = frame_results["boxes"], frame_results["labels"], frame_results["masks"], frame_results["scores"]
+     
         entity_count = 0
         entities_data = []
         for i in range(len(labels)):
@@ -138,11 +136,83 @@ def get_masks(state: StageState, props:Dict[str, Any], device: Any, scratch_dir:
             entity_count+=1
         
         with open(os.path.join(out_dir, "data", f"frame-{current_frame}.json"), "w+") as f: json.dump(entities_data, f)
+
+        if current_frame%30==0: state["current_frame"]=current_frame
     
     state["finished"]=True
     
+def AoI(box_1:List[int], box_2:List[int])->float:
+    b1_x1, b1_y1, b1_x2, b1_y2 = box_1
+    b2_x1, b2_y1, b2_x2, b2_y2 = box_2
 
+    x_left = max(b1_x1, b2_x1)
+    y_bottom = max(b1_y1, b2_y1)
+    x_right = min(b1_x2, b2_x2)
+    y_top = min(b1_y2, b2_y2)
 
+    if x_right<x_left or y_top<y_bottom:
+        return 0.0
+    
+    intersection = (x_right-x_left)*(y_top-y_bottom)
+    b1_area = (b1_x2 - b1_x1)*(b1_y2 - b1_y1)
+    b2_area = (b2_x2 - b2_x1)*(b2_y2 - b2_y1)
+    return intersection/float(b1_area+b2_area-intersection)
+
+def match_entities(kp_boxes:List[List[int]], mask_boxes: List[Optional[List[int]]], threshold:float):
+    matches:List[Optional[int]] = [None]*len(kp_boxes) 
+    
+    for kp_idx, kp_box in enumerate(kp_boxes):
+        match_score = [0.0]*len(mask_boxes)
+        for mask_idx, mask_box in enumerate(mask_boxes):
+            if mask_box is None: continue
+            match_score[mask_idx] = AoI(kp_box, mask_box)
+        
+        best_score, best_idx  = 0,0
+        for idx, score in enumerate(match_score):
+            if score>best_score:
+                best_score = score
+                best_idx = idx
+        
+        if best_score>threshold:
+            matches[kp_idx] = best_idx
+            mask_boxes[best_idx] = None
+    
+    return matches
+
+def consolidate_rccn_outputs(state: StageState, props:Dict[str, Any], scratch_dir: str):
+    if state["finished"]: return
+    current_frame = state["current_frame"]
+    total_frames = props["total_frames"]
+    kp_dir = os.path.join(scratch_dir, "keypoint_rcnn")
+    mask_dir = os.path.join(scratch_dir, "mask_rcnn")
+    out_dir = os.path.join(scratch_dir, "consolidated_rcnn")
+    
+    pbar = trange(current_frame, total_frames)
+    pbar.set_description("Running Consolidate")
+    for current_frame in pbar:
+        with open(os.path.join(kp_dir, "data", f"frame-{current_frame}.json"), "r") as f: kp_data = json.load(f)
+        with open(os.path.join(mask_dir, "data", f"frame-{current_frame}.json"), "r") as f: mask_data = json.load(f)
+        out_data = kp_data
+
+        kp_boxes = [d["box"] for d in kp_data]
+        mask_boxes = [d["box"] for d in mask_data]
+
+        matches = match_entities(kp_boxes, mask_boxes, 0.8)
+        for kp_idx, mask_idx in enumerate(matches):
+            out_data[kp_idx]["mask_rcnn"] = mask_data[mask_idx] if mask_idx is not None else False
+
+            shutil.copyfile(
+                os.path.join(kp_dir, "patch", f"frame-{current_frame}-entity-{kp_idx}.jpg"),
+                os.path.join(out_dir, "patch", f"frame-{current_frame}-entity-{kp_idx}.jpg"))
+            
+            if mask_idx is not None:
+                shutil.copyfile(
+                    os.path.join(mask_dir, "masks", f"frame-{current_frame}-entity-{mask_idx}.png"),
+                    os.path.join(out_dir, "masks", f"frame-{current_frame}-entity-{kp_idx}.png"))
+        
+        with open(os.path.join(out_dir, "data", f"frame-{current_frame}.json"), "w+") as f: json.dump(out_data, f)
+        
+        if current_frame%30==0: state["current_frame"]=current_frame
 
 
 
@@ -181,9 +251,10 @@ if __name__=="__main__":
     device = init_torch()
 
     st = StateTemplate()
-    st.register_stage("make_frames", {"current_frame": 10, "finished": False})
-    st.register_stage("find_patches", {"current_frame": 10, "finished": True})
-    st.register_stage("find_masks", {"current_frame": 10, "finished": True})
+    st.register_stage("make_frames", {"current_frame": 0, "finished": False})
+    st.register_stage("get_patches", {"current_frame": 0, "finished": False})
+    st.register_stage("get_masks", {"current_frame": 0, "finished": False})
+    st.register_stage("consolidate", {"current_frame": 0, "finished": False})
 
     state = State(st, os.path.join(args.scratch_dir, "state.json"))
     props = make_props(args.input)
@@ -192,14 +263,17 @@ if __name__=="__main__":
     state.save(pretty_print=True)
     print("Turn video to frames:  ✔️")
 
-    get_patches(state["find_patches"], props, device, args.scratch_dir)
+    get_patches(state["get_patches"], props, device, args.scratch_dir)
     state.save(pretty_print=True)
     print("Run keypoint RCNN:  ✔️     (gets patches, bounding boxes, keypoints)")
     
-    get_masks(state["find_masks"], props, device, args.scratch_dir)
+    get_masks(state["get_masks"], props, device, args.scratch_dir)
     state.save(pretty_print=True)
-    print("Run keypoint RCNN:  ✔️     (gets patches, bounding boxes, masks)")
+    print("Run mask RCNN:  ✔️     (gets patches, bounding boxes, masks)")
 
+    consolidate_rccn_outputs(state["consolidate"], props, args.scratch_dir)
+    state.save(pretty_print=True)
+    print("Run consolidate:  ✔️")
 
 
     pass
