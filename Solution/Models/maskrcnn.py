@@ -31,7 +31,7 @@ class MaskRCNN():
 
             scores = outputs[i]['scores'][:thresholded_objects_count].detach().cpu().numpy()
            
-            all_masks = (outputs[i]['masks']>0.5).detach().squeeze()
+            all_masks = (outputs[i]['masks']>0.5).detach().squeeze(1)
             masks = all_masks[:thresholded_objects_count].detach().cpu().numpy()
             
             boxes = outputs[i]['boxes'][:thresholded_objects_count].detach().cpu()

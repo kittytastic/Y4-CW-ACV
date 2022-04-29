@@ -106,7 +106,7 @@ def get_masks(state: StageState, props:Dict[str, Any], device: Any, scratch_dir:
     model = MaskRCNN(device)
 
     pbar = trange(current_frame, total_frames)
-    pbar.set_description("Running Keypoint RCNN")
+    pbar.set_description("Running Mask RCNN")
     for current_frame in pbar:
         frame_cv = cv2.imread(os.path.join(in_dir, f"frame-{current_frame}.jpg"))
         frame_tensor = openCV_to_tensor(frame_cv).unsqueeze(0)
@@ -133,7 +133,6 @@ def get_masks(state: StageState, props:Dict[str, Any], device: Any, scratch_dir:
 
             mask_bw = np.full(masks[i].shape, 255, dtype=np.uint8)
             mask_bw *= masks[i]
-            if mask_bw.shape[0]==1 or mask_bw.shape[1]==1: raise Exception("Panic")
             cv2.imwrite(os.path.join(out_dir, "masks", f"frame-{current_frame}-entity-{entity_count}.png"), mask_bw)
             
             entity_count+=1
@@ -361,7 +360,7 @@ def blend_bg_patch(state: StageState, props: Dict[str, Any], scratch_dir:str, mo
 
 def save_video(state: StageState, props: Dict[str, Any], scratch_dir:str, input_video:str):
     if state["finished"]: return
-    current_frame = state["current_frame"]
+    current_frame = 0
     total_frames = props["total_frames"]
     video_reader = VideoReader(input_video)
     w, h = video_reader.get_resolution()
@@ -377,9 +376,7 @@ def save_video(state: StageState, props: Dict[str, Any], scratch_dir:str, input_
         new_frame = new_frame[0:h, 0:w, :]
         normal_writer.write_frame(new_frame)
         dual_writer.write_dual_frame(original_frame, new_frame)
-
-        if current_frame>600:
-            break
+ 
     state["finished"]=True
 
 def make_props(video_path: str):
