@@ -1,9 +1,12 @@
 from Helpers.image_dir import ImageDirReader
 from Helpers.images import openCV_to_PIL, PIL_to_tensor, tensor_to_openCV
+from Models.augmentation import bg_tf, patch_tf
 import numpy as np
 import torch
 import torchvision
 import cv2
+from PIL import Image
+
 
 def show_tile(img):
     max_h, max_w = 2000,2000
@@ -17,20 +20,9 @@ def show_tile(img):
     cv2.destroyAllWindows()
 
 
-def bg_tf(img):
-    img = openCV_to_PIL(img)
-    transforms = torch.nn.Sequential(
-        torchvision.transforms.ColorJitter(brightness=0.5),
-        torchvision.transforms.RandomHorizontalFlip(p=0.5),
-        torchvision.transforms.RandomPerspective()
-    )
-    img = transforms(img)
-    img = PIL_to_tensor(img)
-    return img
-
-if __name__=="__main__":
+def view_background():
     h,w, = 5,5
-    bg_A = ImageDirReader("../Dataset/Generated/Background/A_test", transform=tf)
+    bg_A = ImageDirReader("../Dataset/Generated/Background/A_test", transform=bg_tf)
     imgs = [bg_A[0] for _ in range(h*w)]
     batch = torch.stack(imgs, dim=0)
 
@@ -38,5 +30,15 @@ if __name__=="__main__":
     show_tile(tensor_to_openCV(grid))
 
 
+def view_patch():
+    h,w, = 5,5
+    bg_A = ImageDirReader("../Dataset/Generated/HumanPatches/Games/Patches", transform=patch_tf)
+    imgs = [bg_A[i] for i in range(h*w)]
+    batch = torch.stack(imgs, dim=0)
 
-    
+    grid = torchvision.utils.make_grid(batch, nrow=w)
+    show_tile(tensor_to_openCV(grid))
+
+if __name__=="__main__":
+    view_patch()
+    view_background()
