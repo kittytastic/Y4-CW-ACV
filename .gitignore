@@ -7,3 +7,4 @@ Dataset/*
 **/results/**
 Solution/checkpoints/**
 *.out
+Artifacts/**
