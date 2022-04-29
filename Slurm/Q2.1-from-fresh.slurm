@@ -5,7 +5,7 @@
 #SBATCH -p ug-gpu-small
 #SBATCH --qos=short
 #SBATCH --job-name=from-fresh
-#SBATCH --time=1-00:00:00
+#SBATCH --time=2-00:00:00
 
 source /etc/profile
 source ~/anaconda3/bin/activate
@@ -13,7 +13,7 @@ conda init
 conda activate ACV
 
 
-(cd ../Solution/; python ./Q2.1_train_frame_style_transfer.py --dataroot ../Dataset/Train_Raw/ --name game2movie --use_wandb --batch_size 4) &
+(cd ../Solution/; python ./Q2.1_train_background.py --dataroot ../Dataset/Train_Raw/ --init_gain 48 --name game2movie_new --use_wandb --batch_size 4) &
 pids[0]=$!
 
 
