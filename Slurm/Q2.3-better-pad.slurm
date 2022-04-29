@@ -5,7 +5,7 @@
 #SBATCH -p ug-gpu-small
 #SBATCH --qos=short
 #SBATCH --job-name=pad
-#SBATCH --time=0-12:00:00
+#SBATCH --time=2-00:00:00
 
 source /etc/profile
 source ~/anaconda3/bin/activate
@@ -13,7 +13,7 @@ conda init
 conda activate ACV
 
 
-(cd ../Solution/; python ./Q2.3_train.py --dataroot pad --batch_size 4 --name better_patch_pad --use_wandb --init_gain 12) &
+(cd ../Solution/; python ./Q2.3_train.py --dataroot pad --batch_size 4 --name better_patch_pad_new --use_wandb --init_gain 48) &
 pids[0]=$!
 
 
