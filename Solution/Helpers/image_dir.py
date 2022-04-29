@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from .video import IOBase, VideoReader
 import os
 import cv2
@@ -32,13 +32,14 @@ class ImageDirWriter(IOBase):
 
 
 class ImageDirReader(IOBase):
-    def __init__(self, dir_path: str, file_type:Optional[str]=None, ordered:bool=True) -> None:
+    def __init__(self, dir_path: str, file_type:Optional[str]=None, ordered:bool=False, transform:Optional[Callable[[Any], Any]]=None) -> None:
         assert(os.path.isdir(dir_path))
 
         self.dir_path = dir_path
         self.file_type = file_type
         self.ordered = ordered
         self.pos = 0
+        self.transform = transform
         self.refresh()
 
 
@@ -70,7 +71,10 @@ class ImageDirReader(IOBase):
     def __getitem__(self, idx):
         if idx<len(self.eligable_files) and idx>=0:
             full_path = os.path.join(self.dir_path, self.eligable_files[idx])
-            return cv2.imread(full_path) 
+            img = cv2.imread(full_path)
+            if self.transform is not None:
+                img = self.transform(img)
+            return img
         else:
             raise IndexError
 
