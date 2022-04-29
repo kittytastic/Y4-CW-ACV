@@ -28,6 +28,7 @@ import argparse
 import cv2
 import json
 import numpy as np
+from Helpers.other import create_dirs
 
 from io import StringIO 
 import shutil
@@ -360,14 +361,13 @@ def blend_bg_patch(state: StageState, props: Dict[str, Any], scratch_dir:str, mo
 
 def save_video(state: StageState, props: Dict[str, Any], scratch_dir:str, input_video:str):
     if state["finished"]: return
-    current_frame = 0
     total_frames = props["total_frames"]
     video_reader = VideoReader(input_video)
     w, h = video_reader.get_resolution()
     normal_writer = VideoWriter(os.path.join(scratch_dir, "output", "final.mp4"), like_video=video_reader)
     dual_writer = DualVideoWriter(os.path.join(scratch_dir, "output", "compare.mp4"), like_video=video_reader)
     
-    pbar = trange(current_frame, total_frames)
+    pbar = trange(0, total_frames)
     pbar.set_description("Running build video")
     for current_frame in pbar:
         original_frame = cv2.imread(os.path.join(scratch_dir, "raw_frames", f"frame-{current_frame}.jpg"))
@@ -391,6 +391,15 @@ def make_props(video_path: str):
         "patch_model":"patch",
         "patch_model_epoch":"latest"
         }
+
+def build_required_dirs(scratch_dir: str):
+    sub_dirs = ["background", "blended_frames", "output", "raw_frames", "style_patches", 
+    os.path.join("consolidated_rcnn","data"), os.path.join("consolidated_rcnn", "masks"), os.path.join("consolidated_rcnn", "patches"),
+    os.path.join("mask_rcnn","data"), os.path.join("mask_rcnn", "masks"), os.path.join("mask_rcnn", "patches"),
+    os.path.join("keypoint_rcnn","data"), os.path.join("keypoint_rcnn", "patches")]
+    full_paths = [os.path.join(scratch_dir, d) for d in sub_dirs]
+    create_dirs(full_paths)
+
 
 if __name__=="__main__":
     # Find Patches
@@ -417,6 +426,7 @@ if __name__=="__main__":
 
     assert(os.path.isfile(args.input))
     assert(os.path.isdir(args.scratch_dir))
+    build_required_dirs(args.scratch_dir)
 
     device = init_torch()
 
@@ -428,7 +438,7 @@ if __name__=="__main__":
     st.register_stage("background", {"current_frame": 0, "finished": False})
     st.register_stage("patch_style", {"current_frame": 0, "finished": False})
     st.register_stage("blend_frame", {"current_frame": 0, "finished": False})
-    st.register_stage("build_video", {"current_frame": 0, "finished": False})
+    st.register_stage("build_video", {"finished": False})
 
     state = State(st, os.path.join(args.scratch_dir, "state.json"))
     props = make_props(args.input)
