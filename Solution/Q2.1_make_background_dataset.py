@@ -30,10 +30,10 @@ if __name__=="__main__":
     print(games_files)
     print(movies_files)
 
-    games_our_dir = os.path.join(args.output, "A")
-    movie_our_dir = os.path.join(args.output, "B")
-    games_test_dir = os.path.join(args.output, "A_test")
-    movie_test_dir = os.path.join(args.output, "B_test")
+    games_our_dir = os.path.join(args.output, "trainA")
+    movie_our_dir = os.path.join(args.output, "trainB")
+    games_test_dir = os.path.join(args.output, "testA")
+    movie_test_dir = os.path.join(args.output, "testB")
     create_dirs([games_our_dir, movie_our_dir, games_test_dir, movie_test_dir])
     
     print("Games")

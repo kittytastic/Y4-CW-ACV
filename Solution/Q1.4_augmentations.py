@@ -1,6 +1,6 @@
 from Helpers.image_dir import ImageDirReader
 from Helpers.images import openCV_to_PIL, PIL_to_tensor, tensor_to_openCV
-from Models.augmentation import bg_tf, patch_tf
+from Models.augmentation import movie_bg_tf, game_bg_tf, patch_tf
 import numpy as np
 import torch
 import torchvision
@@ -20,10 +20,19 @@ def show_tile(img):
     cv2.destroyAllWindows()
 
 
-def view_background():
+def view_game_background():
     h,w, = 5,5
-    bg_A = ImageDirReader("../Dataset/Generated/Background/A_test", transform=bg_tf)
+    bg_A = ImageDirReader("../Dataset/Generated/Background/testA", transform=game_bg_tf)
     imgs = [bg_A[0] for _ in range(h*w)]
+    batch = torch.stack(imgs, dim=0)
+
+    grid = torchvision.utils.make_grid(batch, nrow=w)
+    show_tile(tensor_to_openCV(grid))
+
+def view_movie_background():
+    h,w, = 5,5
+    bg_A = ImageDirReader("../Dataset/Generated/Background/testB", transform=movie_bg_tf)
+    imgs = [bg_A[i*7] for i in range(h*w)]
     batch = torch.stack(imgs, dim=0)
 
     grid = torchvision.utils.make_grid(batch, nrow=w)
@@ -40,5 +49,6 @@ def view_patch():
     show_tile(tensor_to_openCV(grid))
 
 if __name__=="__main__":
+    view_movie_background()
+    view_game_background()
     view_patch()
-    view_background()
