@@ -4,7 +4,7 @@
 #SBATCH -p cpu
 #SBATCH --qos=short
 #SBATCH --job-name=from-pretrained
-#SBATCH --time=0-01:w:00:00
+#SBATCH --time=0-01:00:00
 
 source /etc/profile
 source ~/anaconda3/bin/activate
