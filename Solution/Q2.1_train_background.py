@@ -1,6 +1,7 @@
 from typing import Any
 
 import sys
+from Helpers.cgan import tensor_to_cycle_gan_colour
 sys.path.append("pytorch_CycleGAN_and_pix2pix")
 from pytorch_CycleGAN_and_pix2pix.data import create_dataset
 from pytorch_CycleGAN_and_pix2pix.options.train_options import TrainOptions
@@ -32,13 +33,21 @@ class BG_model_AB_Loader:
     def __len__(self):
         return max(self.A_size, self.B_size)
 
+def game_tf(img):
+    img = game_bg_tf(img)
+    return tensor_to_cycle_gan_colour(img)
+
+def movie_tf(img):
+    img = movie_bg_tf(img)
+    return tensor_to_cycle_gan_colour(img)
+
 if __name__ == '__main__':
     opt = TrainOptions().parse()
 
     opt, target_hrs = inject_time_arg(opt)
 
-    dl_A = ImageDirReader("../Dataset/Generated/Background/trainA", transform=game_bg_tf)
-    dl_B = ImageDirReader("../Dataset/Generated/Background/trainB", transform=movie_bg_tf)
+    dl_A = ImageDirReader("../Dataset/Generated/Background/trainA", transform=game_tf)
+    dl_B = ImageDirReader("../Dataset/Generated/Background/trainB", transform=movie_tf)
     dl = BG_model_AB_Loader(dl_A, dl_B)
     
     ds = torch.utils.data.DataLoader(dl, num_workers=opt.num_threads, batch_size=opt.batch_size, shuffle=True)
