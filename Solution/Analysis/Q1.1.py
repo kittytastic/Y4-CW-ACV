@@ -51,7 +51,7 @@ def gen_figure():
     B_imgs = [bg_B[id] for id in img_ids]
     A_batch = torch.stack(A_imgs)
     B_batch = torch.stack(B_imgs)
-    batch = torch.stack(A_imgs+B_imgs, dim=0)
+    batch = torch.stack(A_imgs[:w*(h-2)]+B_imgs[:w*(h-2)], dim=0)
 
     A_grid = torchvision.utils.make_grid(A_batch, nrow=w)
     B_grid = torchvision.utils.make_grid(B_batch, nrow=w)
