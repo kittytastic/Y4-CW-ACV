@@ -27,6 +27,9 @@ def inject_time_arg(opt):
 def get_default_test_opt():
     return  argparse.Namespace(aspect_ratio=1.0, batch_size=1, checkpoints_dir='./checkpoints', crop_size=256, dataroot='non', dataset_mode='single', direction='AtoB', display_winsize=256, epoch='latest', eval=False, gpu_ids=[0], init_gain=0.02, init_type='normal', input_nc=3, isTrain=False, load_iter=0, load_size=256, max_dataset_size=math.inf, model='test', model_suffix='', n_layers_D=3, name='experiment_name', ndf=64, netD='basic', netG='resnet_9blocks', ngf=64, no_dropout=False, no_flip=False, norm='instance', num_test=50, num_threads=4, output_nc=3, phase='test', preprocess='resize_and_crop', results_dir='./results/', serial_batches=False, suffix='', use_wandb=False, verbose=False)
 
+def get_default_test_opt_full_cycle(model_name: str, epoch:str = "latest"):
+    return argparse.Namespace(aspect_ratio=1.0, batch_size=1, checkpoints_dir='../Checkpoints/cycleGAN', crop_size=256, dataroot='none', dataset_mode='single', direction='AtoB', display_id=-1, display_winsize=256, epoch=epoch, eval=True, gpu_ids=[0], init_gain=0.02, init_type='normal', input_nc=3, isTrain=False, load_iter=0, load_size=256, max_dataset_size=math.inf, model='cycle_gan', model_suffix='', n_layers_D=3, name=model_name, ndf=64, netD='basic', netG='resnet_9blocks', ngf=64, no_dropout=True, no_flip=True, norm='instance', num_test=10, num_threads=0, output_nc=3, phase='test', preprocess='resize_and_crop', results_dir='./results/', serial_batches=False, suffix='', use_wandb=False, verbose=False)
+
 def apply_normal_test_opt(opt):
     opt.num_threads = 0 
     opt.batch_size = 1  

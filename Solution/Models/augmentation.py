@@ -1,4 +1,5 @@
 from Helpers.images import openCV_to_PIL, PIL_to_tensor, tensor_to_openCV, openCV_to_tensor
+from Helpers.cgan import cycle_gan_to_tensor_colour, tensor_to_cycle_gan_colour
 from Helpers.image_resize_loader import ImageStandardizer
 import numpy as np
 import torch
@@ -45,5 +46,12 @@ def __make_power_2(img, base):
     w = int(round(ow / base) * base)
     return h,w
 
+def __calc_power_2(ow,oh, base):
+    h = int(round(oh / base) * base)
+    w = int(round(ow / base) * base)
+    return h,w
+
 def bg_eval(img):
-    return openCV_to_tensor(img)
+    h,w = __calc_power_2(img.shape[1], img.shape[0], 4)
+    img = cv2.resize(img, (w,h))
+    return tensor_to_cycle_gan_colour(openCV_to_tensor(img))
