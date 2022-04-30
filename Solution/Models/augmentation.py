@@ -1,4 +1,4 @@
-from Helpers.images import openCV_to_PIL, PIL_to_tensor, tensor_to_openCV
+from Helpers.images import openCV_to_PIL, PIL_to_tensor, tensor_to_openCV, openCV_to_tensor
 from Helpers.image_resize_loader import ImageStandardizer
 import numpy as np
 import torch
@@ -44,3 +44,6 @@ def __make_power_2(img, base):
     h = int(round(oh / base) * base)
     w = int(round(ow / base) * base)
     return h,w
+
+def bg_eval(img):
+    return openCV_to_tensor(img)
