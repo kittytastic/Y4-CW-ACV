@@ -20,7 +20,7 @@ import os
 
 
 MODEL_NAME = "better_patch_pad_new"
-EPOCH = "11"
+EPOCH = "20"
 MODE="pad"
 
 def show_tile(img, path):
@@ -81,7 +81,7 @@ def run_cgan(all_batches):
 
 
 def view_patch():
-    h,w, = 2,3
+    h,w, = 3,4
     display_s = ImageStandardizer(256, 256)
     algo_s = ImageStandardizer(256, 256, resize_mode=MODE)
     dl = Aligned_Class_Unaligned_Data_AB_Loader("../../Dataset/Generated/Poses", "game-output-{id}.jpg", "movie-output-{id}.jpg", tf=lambda x: image_loader_tf(x, algo_s))

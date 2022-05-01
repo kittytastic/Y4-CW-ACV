@@ -18,8 +18,8 @@ import random
 import os
 
 
-MODEL_NAME = "paired_game2movie"
-EPOCH = "38"
+MODEL_NAME = "games2movie_new"
+EPOCH = "25"
 
 def show_tile(img, path):
     max_h, max_w = 2000,2000
@@ -63,7 +63,7 @@ def run_cgan(all_batches):
 
 
 def view_background():
-    h,w, = 2,3
+    h,w, = 4,3
     bg_A = ImageDirReader("../../Dataset/Generated/Background/testA", transform=bg_eval)
     img_ids = random.sample(range(len(bg_A)), h*w)
     A_imgs = [bg_A[id] for id in img_ids]
