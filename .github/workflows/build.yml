@@ -1,0 +1,83 @@
+name:  Create Submission
+
+# Trigger on any push with a git tag
+# To create a git tag, run the following commands on the branch you wish to release:
+#   git tag 1.0.0.0
+#   git push origin --tags
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build_zip:
+    name: Create Submission
+    runs-on: ubuntu-latest
+
+    env:
+      Target_Name: qwrx21-acv
+      
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7.5' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+
+      - name: Prepare Directory
+        run: mkdir tmp
+      
+      - name: Make name
+        id: full_name
+        run: echo "::set-output name=name::${{env.Target_Name}}-${GITHUB_REF##*/}.zip"
+
+      - name: Copy Files
+        run:  ./prepare_submit.sh ./tmp
+
+      - name: Add Version File
+        run: printf 'Submission auto-built at %s %s using \nVersion Tag:%s \nCommit Hash:%s' $(date +'%H:%M:%S %d-%m-%Y') ${GITHUB_REF##*/} $GITHUB_SHA >> VERSION.md
+        working-directory: ./tmp
+
+      
+      # LATEX
+      - name: Build Latex
+        uses: xu-cheng/latex-action@v2
+        with:
+          working_directory: ./Report
+          root_file: report.tex
+
+      - name: Copy Data Report 
+        run:  cp Report/report.pdf ./tmp/report.pdf
+      
+
+      # ZIP final solution
+      - name: ZIP Files
+        run: zip ${{steps.full_name.outputs.name}} *
+        working-directory: ./tmp
+
+      
+      # Create release
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref}}
+          release_name:  ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      # Upload as asset
+      - name: Upload as an asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ./tmp/${{steps.full_name.outputs.name}}
+          asset_name: ${{steps.full_name.outputs.name}}
+          asset_content_type: application/zip
