@@ -19,7 +19,7 @@ import os
 
 
 MODEL_NAME = "games2movie_new"
-EPOCH = "25"
+EPOCH = "latest"
 
 def show_tile(img, path):
     max_h, max_w = 2000,2000

@@ -332,7 +332,8 @@ def mask_blend(current_frame: int, props:Dict[str, Any], scratch_dir: str)->np.n
         has_mask = entity_data["mask_rcnn"] is not False
         entity_img = cv2.imread(os.path.join(style_patch_dir, f"frame-{current_frame}-entity-{entity}.jpg"))
         if not has_mask:
-            bg_cv[y1:y2, x1:x2] = entity_img
+            #bg_cv[y1:y2, x1:x2] = entity_img # bg-model is better, just use that
+            continue
         else:
             full_entity = np.zeros_like(bg_cv)
             full_entity[y1:y2, x1:x2] = entity_img
@@ -386,8 +387,8 @@ def make_props(video_path: str):
     return {
         "total_frames":total_frames,
         "debug_mask_rcnn": True,
-        "background_model":"bg",
-        "background_model_epoch":"38",
+        "background_model":"background",
+        "background_model_epoch":"latest",
         "patch_model":"patch",
         "patch_model_epoch":"latest"
         }

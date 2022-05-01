@@ -1,1 +1,4 @@
 *.pth
+experiment_name/*
+!patch/latest_net_G.pth
+!background/latest_net_G.pth

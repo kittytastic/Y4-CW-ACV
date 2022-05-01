@@ -20,7 +20,7 @@ import os
 
 
 MODEL_NAME = "better_patch_pad_new"
-EPOCH = "20"
+EPOCH = "latest"
 MODE="pad"
 
 def show_tile(img, path):
