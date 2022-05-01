@@ -35,7 +35,7 @@ jobs:
         run: echo "::set-output name=name::${{env.Target_Name}}-${GITHUB_REF##*/}.zip"
 
       - name: Copy Files
-        run:  ./prepare_submit.sh ./tmp
+        run:  chmod +x ./prepare_submit.sh; ./prepare_submit.sh ./tmp
 
       - name: Add Version File
         run: printf 'Submission auto-built at %s %s using \nVersion Tag:%s \nCommit Hash:%s' $(date +'%H:%M:%S %d-%m-%Y') ${GITHUB_REF##*/} $GITHUB_SHA >> VERSION.md
