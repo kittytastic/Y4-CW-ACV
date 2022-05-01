@@ -24,7 +24,7 @@ jobs:
           fetch-depth: '0'
           lfs: true
 
-      - name: Copy Files
+      - name: Get LFS 
         run:  git lfs pull; ls Checkpoints
 
       - uses: actions/setup-python@v2
@@ -59,7 +59,7 @@ jobs:
 
       # ZIP final solution
       - name: ZIP Files
-        run: zip ${{steps.full_name.outputs.name}} *
+        run: zip -r ${{steps.full_name.outputs.name}} *
         working-directory: ./tmp
 
       
