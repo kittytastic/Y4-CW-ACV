@@ -81,7 +81,7 @@ def run_cgan(all_batches):
 
 
 def view_patch():
-    h,w, = 3,4
+    h,w, = 3,5
     display_s = ImageStandardizer(256, 256)
     algo_s = ImageStandardizer(256, 256, resize_mode=MODE)
     dl = Aligned_Class_Unaligned_Data_AB_Loader("../../Dataset/Generated/Poses", "game-output-{id}.jpg", "movie-output-{id}.jpg", tf=lambda x: image_loader_tf(x, algo_s))
@@ -104,7 +104,7 @@ def view_patch():
     full_batch = torch.stack(A_pairs+B_pairs, dim=0)
 
     grid = torchvision.utils.make_grid(full_batch, nrow=2*w)
-    show_tile(tensor_to_openCV(grid), "../../Artifacts/Q2_3.jpg")
+    show_tile(tensor_to_openCV(grid), f"../../Artifacts/Q2_3_{EPOCH}.jpg")
 
 
 

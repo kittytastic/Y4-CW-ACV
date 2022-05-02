@@ -90,7 +90,7 @@ def view_background():
     full_batch = torch.stack(A_pairs+B_pairs, dim=0)
 
     grid = torchvision.utils.make_grid(full_batch, nrow=2*w)
-    show_tile(tensor_to_openCV(grid), "../../Artifacts/Q2_1.jpg")
+    show_tile(tensor_to_openCV(grid), f"../../Artifacts/Q2_1_{EPOCH}.jpg")
 
 
 if __name__=="__main__":

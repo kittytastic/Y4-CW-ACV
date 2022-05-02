@@ -5,14 +5,14 @@
  
  \begin{figure}[h!]
   \begin{center}
-  \includegraphics[scale=0.2]{Q2_3.jpg}
+  \includegraphics[scale=0.2]{Q2_3_latest.jpg}
     \caption{Q2.3 sample of patch frames (left) and style transfer into other domain (right).}
     \label{fig:Q2_4}
   \end{center}
   \end{figure}
  
  To combine the outputs of patch model and background model we used the masks from the Mask-CNN mentioned in Q1.1.
- We continue to extract patches from the background using the Keypoint-RCNN, but also match these prediction with Mask-RCNN predictions using the Area of Intersection of bounding boxes.
+ We continue to extract patches using the Keypoint-RCNN, but also match these prediction with Mask-RCNN predictions using the Area of Intersection of bounding boxes.
  This gives us the better patch detection of Keypoint-RCNN with pixel masks from the Mask-CNN.
  These masks are used to place patches back into the background.
  

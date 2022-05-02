@@ -1,9 +1,9 @@
-The background model does a good job at preserving detail, and it produces relatively movie like results.
-Darker game scenes are the main challenge faced by this model.
-They tend to produce a brown output, whereas lighter scene produce a much more convincing effect.
+The background model does a good job at preserving detail, and produces somewhat movie like results.
+Darker game scenes are the main challenge faced by this model, producing a brown output, whereas lighter scene produce a much more convincing effect.
 This could be rectified by including more nighttime movie training data.
 
-The patch model doesn't perform as well as the background model.
-There are many artifacts in the patch model output, and a lack of detail overall.
-A more fine grain approach may have proven valuable, for example, we could have created: torso, hands, face, e.t.c classes, then trained, aligning these classes.
-The both models also lacks any temporal constancy, leading to flickering.
+The patch model doesn't perform as well.
+There are many artifacts, and an overall lack of detail.
+A more fine grain approach may help, for example, we could have created: torso, hands, face, e.t.c classes, then trained, aligning these classes.
+
+Both models also lacks any temporal constancy, leading to flickering.
