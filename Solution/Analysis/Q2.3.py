@@ -19,8 +19,8 @@ import random
 import os
 
 
-MODEL_NAME = "better_patch_pad_new"
-EPOCH = "latest"
+MODEL_NAME = "patch_pretrained"
+EPOCH = "20"
 MODE="pad"
 
 def show_tile(img, path):
@@ -104,7 +104,7 @@ def view_patch():
     full_batch = torch.stack(A_pairs+B_pairs, dim=0)
 
     grid = torchvision.utils.make_grid(full_batch, nrow=2*w)
-    show_tile(tensor_to_openCV(grid), f"../../Artifacts/Q2_3_{EPOCH}.jpg")
+    show_tile(tensor_to_openCV(grid), f"../../Artifacts/Q2_3_{EPOCH}_{MODEL_NAME}.jpg")
 
 
 
