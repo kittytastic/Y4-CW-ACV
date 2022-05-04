@@ -6,7 +6,7 @@ To recreate the final output video:
 2. `python Q2.3_apply.py -i <input video> -o <working and output directory>`
 3. The results will be in `<working and output directory>/output`
 
-Figures used in the can be generated using scripts found in `/Solution/Analysis`.
+Figures used in the report can be generated using scripts found in `/Solution/Analysis`.
 NOTE. these scripts have dataset requirements and model checkpoint requirements.
 Datasets can be recreated using by running:
 1. `mkdir Dataset\Train` and place training videos in here
